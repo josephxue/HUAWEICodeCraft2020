@@ -8,9 +8,7 @@ typedef struct ListNode {
   int val;
   ListNode* next;
 
-  ListNode(int val_) : val(val_) {
-    next = NULL;
-  }
+  ListNode(int val_) : val(val_) {next = NULL;}
 } ListNode;
 
 class DirectedGraph {
@@ -30,8 +28,22 @@ public:
     }
     ConstructAdjacencyList();
   }
+
   ~DirectedGraph() {}
 
+  void FindAllCycles(std::vector<std::vector<int> >* ret) {
+    // map to represent the status of each vertex
+    // 1 represents the vertex has already been visited
+    // 0 represents the vertex has not been visited
+    // -1 represents the vertex can be skipped(not envovled in the ids or finished processed)
+    std::vector<int> status_map(max_id_+1, -1);
+    for (int i = 0; i < transfer_from_ids_.size(); i++) {
+      status_map[transfer_from_ids_[i]] = 0;
+    }
+    for (int i = 0; i < transfer_to_ids_.size(); i++) {
+      status_map[transfer_to_ids_[i]] = 0;
+    }
+  }
 
 private:
   std::vector<int> transfer_from_ids_;
@@ -58,10 +70,19 @@ private:
       AddEdge(transfer_from_ids_[i], transfer_to_ids_[i]);
     }
   }
+
+  void DepthFirstSearch(std::vector<int>* path, std::vector<std::vector<int> >* ret) {
+
+  }
 };
 
 int main(int argc, char** argv) {
-  DirectedGraph("../data/test_data.txt");
+  DirectedGraph directed_graph("../data/test_data.txt");
+
+  std::vector<std::vector<int> > ret;
+  directed_graph.FindAllCycles(&ret);
+
+  
 
   return 0;
 }

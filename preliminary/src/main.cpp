@@ -43,6 +43,16 @@ public:
     for (int i = 0; i < transfer_to_ids_.size(); i++) {
       status_map[transfer_to_ids_[i]] = 0;
     }
+
+    std::vector<int> path;
+    for (int i = 0; i < status_map.size(); i++) {
+      if (status_map[i] == -1) continue;
+      status_map[i] = 1;
+      path.push_back(i);
+      DepthFirstSearch(vertexes_[i]->val, &path, &status_map, ret);
+      status_map[i] = 0;
+      path.pop_back();
+    }
   }
 
 private:
@@ -71,7 +81,33 @@ private:
     }
   }
 
-  void DepthFirstSearch(std::vector<int>* path, std::vector<std::vector<int> >* ret) {
+  void DepthFirstSearch(int id, std::vector<int>* path, std::vector<int>* status_map, 
+      std::vector<std::vector<int> >* ret) {
+
+    ListNode* current = vertexes_[id]->next;
+    while (current != NULL) {
+      if ((*status_map)[current->val] == -1) {
+
+      } else if ((*status_map)[current->val] == 1) {
+        int i = 0;
+        for (; i < path->size(); i++) {
+          if (current->val == (*path)[i])
+            break; 
+        }
+        std::vector<int> result; 
+        for (int j = i; j < path->size(); j++) {
+          result.push_back((*path)[j]);
+        }
+        ret->push_back(result);
+      } else {
+        (*status_map)[current->val] = 1;
+        path->push_back(current->val);
+        DepthFirstSearch(current->val, path, status_map, ret);
+        (*status_map)[current->val] = 0;
+        path->pop_back();
+      }
+      current = current->next;
+    }
 
   }
 };
@@ -81,6 +117,11 @@ int main(int argc, char** argv) {
 
   std::vector<std::vector<int> > ret;
   directed_graph.FindAllCycles(&ret);
+  std::cout << ret.size() << std::endl;
+  for (int i = 0; i < ret[0].size(); i++) {
+    std::cout << ret[1][i] << std::endl;
+  }
+  
 
   
 

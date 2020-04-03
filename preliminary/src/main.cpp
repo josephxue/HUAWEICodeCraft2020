@@ -109,7 +109,6 @@ private:
       if ((*status_map)[current->val] == -1) {
 
       } else if ((*status_map)[current->val] == 1) {
-        if (id == 4898) std::cout << current->val << std::endl;
         int i = 0;
         for (; i < path->size(); i++) {
           if (current->val == (*path)[i])

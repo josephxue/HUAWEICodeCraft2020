@@ -3,6 +3,7 @@
 #include <string>
 #include <fstream>
 #include <iostream>
+#include <algorithm>
 
 typedef struct ListNode {
   int val;
@@ -31,7 +32,7 @@ public:
 
   ~DirectedGraph() {}
 
-  void FindAllCycles(std::vector<std::vector<int> >* ret) {
+  std::vector<std::vector<int> > FindAllCycles(std::vector<std::vector<int> >* ret) {
     // map to represent the status of each vertex
     // 1 represents the vertex has already been visited
     // 0 represents the vertex has not been visited
@@ -53,6 +54,25 @@ public:
       status_map[i] = 0;
       path.pop_back();
     }
+
+    std::vector<std::vector<int> > ret_after_sort;
+    for (int i = 0; i < ret->size(); i++) {
+      if ((*ret)[i].size() < 3 || (*ret)[i].size() > 7)
+        continue;
+      RotatePath(&(*ret)[i]);
+      ret_after_sort.push_back((*ret)[i]);
+    }
+    std::sort(ret_after_sort.begin(), ret_after_sort.end(), Compare);
+
+    std::vector<std::vector<int> > ret_final;
+    ret_final.push_back(ret_after_sort[0]);
+    for (int i = 1; i < ret_after_sort.size(); i++) {
+      if (IsSame(&ret_after_sort[i], &ret_after_sort[i-1]))
+        continue;
+      ret_final.push_back(ret_after_sort[i]);
+    }
+
+    return ret_final;
   }
 
 private:
@@ -89,6 +109,7 @@ private:
       if ((*status_map)[current->val] == -1) {
 
       } else if ((*status_map)[current->val] == 1) {
+        if (id == 4898) std::cout << current->val << std::endl;
         int i = 0;
         for (; i < path->size(); i++) {
           if (current->val == (*path)[i])
@@ -108,22 +129,59 @@ private:
       }
       current = current->next;
     }
+  }
 
+  void RotatePath(std::vector<int>* path) {
+    int min_idx = 0;
+    for (int i = 0; i < path->size(); i++) {
+      min_idx = (*path)[min_idx] < (*path)[i] ? min_idx : i;
+    }
+    std::vector<int> tmp(*path);
+    for (int i = 0; i < path->size(); i++) {
+      (*path)[i] = tmp[(i+min_idx)%path->size()];
+    }
+  }
+
+  static bool Compare(std::vector<int> a, std::vector<int> b) {
+    if (a.size() == b.size()) {
+      for (int i = 0; i < a.size(); i++) {
+        if (a[i] == b[i])
+          continue;
+        return a[i] < b[i];
+      }
+    } else {
+      return a.size() < b.size();
+    }
+    return false;
+  }
+
+  bool IsSame(std::vector<int>* a, std::vector<int>* b) {
+    if (a->size() != b->size())
+      return false;
+    for (int i = 0; i < a->size(); i++) {
+      if ((*a)[i] != (*b)[i])
+        return false;
+    }
+    return true;
   }
 };
 
 int main(int argc, char** argv) {
   DirectedGraph directed_graph("../data/test_data.txt");
 
+  std::vector<std::vector<int> > all_cycles;
   std::vector<std::vector<int> > ret;
-  directed_graph.FindAllCycles(&ret);
-  std::cout << ret.size() << std::endl;
-  for (int i = 0; i < ret[0].size(); i++) {
-    std::cout << ret[1][i] << std::endl;
-  }
-  
+  ret = directed_graph.FindAllCycles(&all_cycles);
 
-  
+  std::ofstream outfile("go.txt", std::ios::out);
+  outfile << ret.size() << std::endl;
+  for (int i = 0; i < ret.size(); i++) {
+    for (int j = 0; j < ret[i].size()-1; j++) {
+      outfile << ret[i][j] << ",";
+    }
+    outfile << ret[i][ret[i].size()-1] << std::endl;
+  }
+  outfile.close();
 
   return 0;
 }

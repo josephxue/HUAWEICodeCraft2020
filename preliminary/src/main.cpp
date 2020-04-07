@@ -38,11 +38,14 @@ public:
     // 0 represents the vertex has not been visited
     // -1 represents the vertex can be skipped(not envovled in the ids or finished processed)
     std::vector<int> status_map(max_id_+1, -1);
+    std::vector<bool> appear_in_from(max_id_+1, false);
+    std::vector<bool> appear_in_to(max_id_+1, false);
     for (int i = 0; i < transfer_from_ids_.size(); i++) {
-      status_map[transfer_from_ids_[i]] = 0;
+      appear_in_from[transfer_from_ids_[i]] = true;
+      appear_in_to[transfer_to_ids_[i]] = true;
     }
-    for (int i = 0; i < transfer_to_ids_.size(); i++) {
-      status_map[transfer_to_ids_[i]] = 0;
+    for (int i = 0; i < appear_in_from.size(); i++) {
+      status_map[i] = appear_in_from[i] && appear_in_to[i] == true ? 0 : -1;
     }
 
     std::vector<int> path;
@@ -51,7 +54,7 @@ public:
       status_map[i] = 1;
       path.push_back(i);
       DepthFirstSearch(vertexes_[i]->val, &path, &status_map, ret);
-      status_map[i] = 0;
+      status_map[i] = -1;
       path.pop_back();
     }
 

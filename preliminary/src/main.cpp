@@ -53,15 +53,13 @@ public:
       if (status_map[i] == -1) continue;
       status_map[i] = 1;
       path.push_back(i);
-      DepthFirstSearch(vertexes_[i]->val, &path, &status_map, ret);
+      DepthFirstSearch(vertexes_[i]->val, i, &path, &status_map, ret);
       status_map[i] = -1;
       path.pop_back();
     }
 
     std::vector<std::vector<int> > ret_after_sort;
     for (int i = 0; i < ret->size(); i++) {
-      if ((*ret)[i].size() < 3 || (*ret)[i].size() > 7)
-        continue;
       RotatePath(&(*ret)[i]);
       ret_after_sort.push_back((*ret)[i]);
     }
@@ -104,7 +102,7 @@ private:
     }
   }
 
-  void DepthFirstSearch(int id, std::vector<int>* path, std::vector<int>* status_map, 
+  void DepthFirstSearch(int id, int first_id, std::vector<int>* path, std::vector<int>* status_map, 
       std::vector<std::vector<int> >* ret) {
 
     ListNode* current = vertexes_[id]->next;
@@ -112,20 +110,12 @@ private:
       if ((*status_map)[current->val] == -1) {
 
       } else if ((*status_map)[current->val] == 1) {
-        int i = 0;
-        for (; i < path->size(); i++) {
-          if (current->val == (*path)[i])
-            break; 
-        }
-        std::vector<int> result; 
-        for (int j = i; j < path->size(); j++) {
-          result.push_back((*path)[j]);
-        }
-        ret->push_back(result);
+        if (current->val == first_id && path->size() >= 3) 
+          ret->push_back(*path);
       } else {
         (*status_map)[current->val] = 1;
         path->push_back(current->val);
-        DepthFirstSearch(current->val, path, status_map, ret);
+        if (path->size() <= 7) DepthFirstSearch(current->val, first_id, path, status_map, ret);
         (*status_map)[current->val] = 0;
         path->pop_back();
       }
@@ -169,13 +159,16 @@ private:
 };
 
 int main(int argc, char** argv) {
-  DirectedGraph directed_graph("../data/test_data.txt");
+  // DirectedGraph directed_graph("../data/test_data.txt");
+  // DirectedGraph directed_graph("/data/HWcode2020-TestData/testData/test_data.txt");
+  DirectedGraph directed_graph("/data/test_data.txt");
 
   std::vector<std::vector<int> > all_cycles;
   std::vector<std::vector<int> > ret;
   ret = directed_graph.FindAllCycles(&all_cycles);
 
-  std::ofstream outfile("go.txt", std::ios::out);
+  // std::ofstream outfile("go.txt", std::ios::out);
+  std::ofstream outfile("/projects/student/result.txt", std::ios::out);
   outfile << ret.size() << std::endl;
   for (int i = 0; i < ret.size(); i++) {
     for (int j = 0; j < ret[i].size()-1; j++) {

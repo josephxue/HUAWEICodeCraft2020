@@ -1,16 +1,10 @@
-#include <cstddef>
 #include <vector>
 #include <string>
 #include <fstream>
 #include <iostream>
 #include <algorithm>
+#include <unordered_map>
 
-typedef struct ListNode {
-  int val;
-  ListNode* next;
-
-  ListNode(int val_) : val(val_) {next = NULL;}
-} ListNode;
 
 class DirectedGraph {
 public:
@@ -18,15 +12,29 @@ public:
     std::ifstream infile(filename.c_str());
     int transfer_from_id, transfer_to_id, val;
     char comma;
-    max_id_ = 0;
     while (infile >> transfer_from_id >> comma >> transfer_to_id >> comma >> val) {
       transfer_from_ids_.push_back(transfer_from_id);
       transfer_to_ids_.push_back(transfer_to_id);
-
-      if (max_id_ < transfer_from_id || max_id_ < transfer_to_id) {
-        max_id_ = transfer_from_id > transfer_to_id ? transfer_from_id : transfer_to_id;
-      }
     }
+    infile.close();
+
+    std::vector<int> ids;
+    std::vector<int> tmp_from = transfer_from_ids_;
+    std::vector<int> tmp_to = transfer_to_ids_;
+    std::sort(tmp_from.begin(), tmp_from.end());
+    std::sort(tmp_to.begin(), tmp_to.end());
+    std::set_intersection(
+        tmp_from.begin(), tmp_from.end(), 
+        tmp_to.begin(), tmp_to.end(),
+        std::back_inserter(ids));
+    ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
+    ids_ = ids;
+
+    vertexes_ = std::vector<std::vector<int> >(ids_.size());
+    for (int i = 0; i < ids.size(); i++) {
+      m_[ids_[i]] = i;
+    }
+
     ConstructAdjacencyList();
   }
 
@@ -37,100 +45,58 @@ public:
     // 1 represents the vertex has already been visited
     // 0 represents the vertex has not been visited
     // -1 represents the vertex can be skipped(not envovled in the ids or finished processed)
-    std::vector<int> status_map(max_id_+1, -1);
-    std::vector<bool> appear_in_from(max_id_+1, false);
-    std::vector<bool> appear_in_to(max_id_+1, false);
-    for (int i = 0; i < transfer_from_ids_.size(); i++) {
-      appear_in_from[transfer_from_ids_[i]] = true;
-      appear_in_to[transfer_to_ids_[i]] = true;
-    }
-    for (int i = 0; i < appear_in_from.size(); i++) {
-      status_map[i] = appear_in_from[i] && appear_in_to[i] == true ? 0 : -1;
-    }
-
+    // std::vector<int> status_map(vertexes_.size(), 0);
+    std::vector<bool> status_map(vertexes_.size(), false);
     std::vector<int> path;
     for (int i = 0; i < status_map.size(); i++) {
-      if (status_map[i] == -1) continue;
-      status_map[i] = 1;
-      path.push_back(i);
-      DepthFirstSearch(vertexes_[i]->val, i, &path, &status_map, ret);
-      status_map[i] = -1;
+      // if (status_map[i] == -1) continue;
+      // status_map[i] = 1;
+      status_map[i] = true;
+      path.push_back(ids_[i]);
+      DepthFirstSearch(i, i, &path, &status_map, ret);
+      // status_map[i] = -1;
+      status_map[i] = false;
       path.pop_back();
     }
+    std::sort(ret->begin(), ret->end(), Compare);
 
-    std::vector<std::vector<int> > ret_after_sort;
-    for (int i = 0; i < ret->size(); i++) {
-      RotatePath(&(*ret)[i]);
-      ret_after_sort.push_back((*ret)[i]);
-    }
-    std::sort(ret_after_sort.begin(), ret_after_sort.end(), Compare);
-
-    std::vector<std::vector<int> > ret_final;
-    ret_final.push_back(ret_after_sort[0]);
-    for (int i = 1; i < ret_after_sort.size(); i++) {
-      if (IsSame(&ret_after_sort[i], &ret_after_sort[i-1]))
-        continue;
-      ret_final.push_back(ret_after_sort[i]);
-    }
-
-    return ret_final;
+    return *ret;
   }
 
 private:
   std::vector<int> transfer_from_ids_;
   std::vector<int> transfer_to_ids_;
-  int max_id_;
 
-  std::vector<ListNode*> vertexes_;
-
-  void AddEdge(int src, int dest) {
-    ListNode* current = vertexes_[src];
-    while (current->next != NULL) {
-      current = current->next;
-    }
-    current->next = new ListNode(dest);
-  }
+  std::vector<std::vector<int> > vertexes_;
+  std::vector<int> ids_;
+  std::unordered_map<int, int> m_;
 
   void ConstructAdjacencyList() {
-    for (int i = 0; i <= max_id_; i++) {
-      ListNode* vertex = new ListNode(i);
-      vertexes_.push_back(vertex);
-    }
-
     for (int i = 0; i < transfer_from_ids_.size(); i++) {
-      AddEdge(transfer_from_ids_[i], transfer_to_ids_[i]);
+      if (m_.find(transfer_from_ids_[i]) != m_.end() && m_.find(transfer_to_ids_[i]) != m_.end()) {
+        vertexes_[m_[transfer_from_ids_[i]]].push_back(m_[transfer_to_ids_[i]]);
+      }
+    }
+    for (int i = 0; i < vertexes_.size(); i++) {
+      std::sort(vertexes_[i].begin(), vertexes_[i].end());
     }
   }
 
-  void DepthFirstSearch(int id, int first_id, std::vector<int>* path, std::vector<int>* status_map, 
+  void DepthFirstSearch(int idx, int first_idx, std::vector<int>* path, std::vector<bool>* status_map, 
       std::vector<std::vector<int> >* ret) {
-
-    ListNode* current = vertexes_[id]->next;
-    while (current != NULL) {
-      if ((*status_map)[current->val] == -1) {
-
-      } else if ((*status_map)[current->val] == 1) {
-        if (current->val == first_id && path->size() >= 3) 
+    for (int i = 0; i < vertexes_[idx].size(); i++) {
+      // if ((*status_map)[vertexes_[idx][i]] == -1) continue;
+      if ((*status_map)[vertexes_[idx][i]] == true) {
+        if (vertexes_[idx][i] == first_idx && path->size() >= 3)
           ret->push_back(*path);
       } else {
-        (*status_map)[current->val] = 1;
-        path->push_back(current->val);
-        if (path->size() <= 7) DepthFirstSearch(current->val, first_id, path, status_map, ret);
-        (*status_map)[current->val] = 0;
+        (*status_map)[vertexes_[idx][i]] = true;
+        path->push_back(ids_[vertexes_[idx][i]]);
+        if (path->size() <= 7 && vertexes_[idx][i] > first_idx) 
+          DepthFirstSearch(vertexes_[idx][i], first_idx, path, status_map, ret);
+        (*status_map)[vertexes_[idx][i]] = false;
         path->pop_back();
       }
-      current = current->next;
-    }
-  }
-
-  void RotatePath(std::vector<int>* path) {
-    int min_idx = 0;
-    for (int i = 0; i < path->size(); i++) {
-      min_idx = (*path)[min_idx] < (*path)[i] ? min_idx : i;
-    }
-    std::vector<int> tmp(*path);
-    for (int i = 0; i < path->size(); i++) {
-      (*path)[i] = tmp[(i+min_idx)%path->size()];
     }
   }
 
@@ -145,16 +111,6 @@ private:
       return a.size() < b.size();
     }
     return false;
-  }
-
-  bool IsSame(std::vector<int>* a, std::vector<int>* b) {
-    if (a->size() != b->size())
-      return false;
-    for (int i = 0; i < a->size(); i++) {
-      if ((*a)[i] != (*b)[i])
-        return false;
-    }
-    return true;
   }
 };
 

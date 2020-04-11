@@ -49,12 +49,9 @@ public:
     std::vector<bool> status_map(vertexes_.size(), false);
     std::vector<int> path;
     for (int i = 0; i < status_map.size(); i++) {
-      // if (status_map[i] == -1) continue;
-      // status_map[i] = 1;
       status_map[i] = true;
       path.push_back(ids_[i]);
       DepthFirstSearch(i, i, &path, &status_map, ret);
-      // status_map[i] = -1;
       status_map[i] = false;
       path.pop_back();
     }
@@ -85,7 +82,6 @@ private:
   void DepthFirstSearch(int idx, int first_idx, std::vector<int>* path, std::vector<bool>* status_map, 
       std::vector<std::vector<int> >* ret) {
     for (int i = 0; i < vertexes_[idx].size(); i++) {
-      // if ((*status_map)[vertexes_[idx][i]] == -1) continue;
       if ((*status_map)[vertexes_[idx][i]] == true) {
         if (vertexes_[idx][i] == first_idx && path->size() >= 3)
           ret->push_back(*path);

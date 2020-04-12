@@ -30,7 +30,8 @@ public:
     ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
     ids_ = ids;
 
-    vertexes_ = std::vector<std::vector<int> >(ids_.size());
+    adjacency_list_ = std::vector<std::vector<int> >(ids_.size());
+    incoming_adjacency_list_ = std::vector<std::vector<int> >(ids_.size());
     for (int i = 0; i < ids.size(); i++) {
       m_[ids_[i]] = i;
     }
@@ -45,8 +46,8 @@ public:
     // 1 represents the vertex has already been visited
     // 0 represents the vertex has not been visited
     // -1 represents the vertex can be skipped(not envovled in the ids or finished processed)
-    // std::vector<int> status_map(vertexes_.size(), 0);
-    std::vector<bool> status_map(vertexes_.size(), false);
+    // std::vector<int> status_map(adjacency_list_.size(), 0);
+    std::vector<bool> status_map(adjacency_list_.size(), false);
     std::vector<int> path;
     for (int i = 0; i < status_map.size(); i++) {
       status_map[i] = true;
@@ -64,33 +65,55 @@ private:
   std::vector<int> transfer_from_ids_;
   std::vector<int> transfer_to_ids_;
 
-  std::vector<std::vector<int> > vertexes_;
+  std::vector<std::vector<int> > adjacency_list_;
+  std::vector<std::vector<int> > incoming_adjacency_list_;
   std::vector<int> ids_;
   std::unordered_map<int, int> m_;
 
   void ConstructAdjacencyList() {
     for (int i = 0; i < transfer_from_ids_.size(); i++) {
       if (m_.find(transfer_from_ids_[i]) != m_.end() && m_.find(transfer_to_ids_[i]) != m_.end()) {
-        vertexes_[m_[transfer_from_ids_[i]]].push_back(m_[transfer_to_ids_[i]]);
+        adjacency_list_[m_[transfer_from_ids_[i]]].push_back(m_[transfer_to_ids_[i]]);
+        incoming_adjacency_list_[m_[transfer_to_ids_[i]]].push_back(m_[transfer_from_ids_[i]]);
       }
     }
-    for (int i = 0; i < vertexes_.size(); i++) {
-      std::sort(vertexes_[i].begin(), vertexes_[i].end());
+    for (int i = 0; i < adjacency_list_.size(); i++) {
+      std::sort(adjacency_list_[i].begin(), adjacency_list_[i].end(), std::greater<int>());
     }
   }
 
   void DepthFirstSearch(int idx, int first_idx, std::vector<int>* path, std::vector<bool>* status_map, 
       std::vector<std::vector<int> >* ret) {
-    for (int i = 0; i < vertexes_[idx].size(); i++) {
-      if ((*status_map)[vertexes_[idx][i]] == true) {
-        if (vertexes_[idx][i] == first_idx && path->size() >= 3)
+    for (int i = 0; i < adjacency_list_[idx].size(); i++) {
+      if (adjacency_list_[idx][i] < first_idx) break;
+
+      if ((*status_map)[adjacency_list_[idx][i]] == true) {
+        if (adjacency_list_[idx][i] == first_idx && path->size() >= 3)
           ret->push_back(*path);
       } else {
-        (*status_map)[vertexes_[idx][i]] = true;
-        path->push_back(ids_[vertexes_[idx][i]]);
-        if (path->size() <= 7 && vertexes_[idx][i] > first_idx) 
-          DepthFirstSearch(vertexes_[idx][i], first_idx, path, status_map, ret);
-        (*status_map)[vertexes_[idx][i]] = false;
+        (*status_map)[adjacency_list_[idx][i]] = true;
+        path->push_back(ids_[adjacency_list_[idx][i]]);
+        if (path->size() == 6) {
+          int current_idx = adjacency_list_[idx][i];
+          if (std::find(incoming_adjacency_list_[first_idx].begin(), incoming_adjacency_list_[first_idx].end(), current_idx)
+              != incoming_adjacency_list_[first_idx].end()) {
+            ret->push_back(*path);
+          }
+
+          int next_idx = adjacency_list_[idx][i];
+          for (int j = 0; j < adjacency_list_[next_idx].size(); j++) {
+            if (adjacency_list_[next_idx][j] < first_idx) break;
+            if (std::find(incoming_adjacency_list_[first_idx].begin(), incoming_adjacency_list_[first_idx].end(), adjacency_list_[next_idx][j]) 
+                != incoming_adjacency_list_[first_idx].end() && (*status_map)[adjacency_list_[next_idx][j]] == 0) {
+              path->push_back(ids_[adjacency_list_[next_idx][j]]);
+              ret->push_back(*path);
+              path->pop_back();
+            }
+          }
+        } else {
+          DepthFirstSearch(adjacency_list_[idx][i], first_idx, path, status_map, ret);
+        }
+        (*status_map)[adjacency_list_[idx][i]] = false;
         path->pop_back();
       }
     }
@@ -112,7 +135,7 @@ private:
 
 int main(int argc, char** argv) {
   // DirectedGraph directed_graph("../data/test_data.txt");
-  // DirectedGraph directed_graph("/data/HWcode2020-TestData/testData/test_data.txt");
+  // DirectedGraph directed_graph("../data/HWcode2020-TestData/testData/test_data.txt");
   DirectedGraph directed_graph("/data/test_data.txt");
 
   std::vector<std::vector<int> > all_cycles;

@@ -52,6 +52,8 @@ public:
     for (int i = 0; i < adjacency_list_.size(); i++) {
       for (int j = 0; j < adjacency_list_[i].size(); j++) {
         middle_idx = adjacency_list_[i][j];
+        if (i > middle_idx)
+          memory[i][middle_idx].emplace_back(-1);
         for (int k = 0; k < adjacency_list_[middle_idx].size(); k++) {
           last_idx = adjacency_list_[middle_idx][k];
           if (i > last_idx && middle_idx > last_idx)
@@ -94,21 +96,17 @@ private:
         ret.emplace_back(path);
       }
       if (next_idx != first_idx && depth == 5) {
-        if ((std::find(adjacency_list_[next_idx].begin(), adjacency_list_[next_idx].end(), first_idx)
-            != adjacency_list_[next_idx].end()) && status_map[next_idx] == false) {
-          path.emplace_back(ids_[next_idx]);
-          ret.emplace_back(path);
-          path.pop_back();
-        }
         std::unordered_map<int, std::vector<int>>::iterator it = memory[next_idx].find(first_idx);
-        if (it != memory[next_idx].end()) {
+        if (it != memory[next_idx].end() && status_map[next_idx] == false) {
           path.emplace_back(ids_[next_idx]);
+          bool have_minus = false;
           for (int& middle_idx : it->second) {
-            if (status_map[middle_idx] == false) {
+            if (middle_idx > 0 && status_map[middle_idx] == false) {
               path.emplace_back(ids_[middle_idx]);
               ret.emplace_back(path);
               path.pop_back();
             }
+            if (middle_idx == -1) ret.emplace_back(path); 
           }
           path.pop_back();
         }
@@ -138,20 +136,19 @@ private:
 int main(int argc, char** argv) {
   // DirectedGraph directed_graph("../data/test_data.txt");
   // DirectedGraph directed_graph("../data/HWcode2020-TestData/testData/test_data.txt");
-  // DirectedGraph directed_graph("/data/test_data.txt");
-  DirectedGraph directed_graph("../data/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
+  DirectedGraph directed_graph("/data/test_data.txt");
+  // DirectedGraph directed_graph("../data/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
 
   std::vector<std::vector<int> > ret;
   directed_graph.FindAllCycles(ret);
 
-  std::ofstream outfile("go.txt", std::ios::out);
-  // std::ofstream outfile("/projects/student/result.txt", std::ios::out);
+  // std::ofstream outfile("go.txt", std::ios::out);
+  std::ofstream outfile("/projects/student/result.txt", std::ios::out);
   outfile << ret.size() << std::endl;
   for (std::vector<int>& path : ret) {
-    for (int& p : path) {
-      outfile << p << ",";
-    }
-    outfile << std::endl;
+    for (int i = 0; i < path.size()-1; i++)
+      outfile << path[i] << ",";
+    outfile << path[path.size()-1] << std::endl;
   }
   outfile.close();
 

@@ -48,24 +48,32 @@ public:
     std::vector<bool> status_map(adjacency_list_.size(), false);
 
     std::vector<std::unordered_map<int, std::vector<int>>> memory(adjacency_list_.size());
-    int middle_idx = -1, last_idx = -1;
-    for (int i = 0; i < adjacency_list_.size(); i++) {
-      for (int j = 0; j < adjacency_list_[i].size(); j++) {
-        middle_idx = adjacency_list_[i][j];
-        if (i > middle_idx)
-          memory[i][middle_idx].emplace_back(-1);
-        for (int k = 0; k < adjacency_list_[middle_idx].size(); k++) {
-          last_idx = adjacency_list_[middle_idx][k];
-          if (i > last_idx && middle_idx > last_idx)
-            memory[i][last_idx].emplace_back(middle_idx);
+    for (int start_idx = 0; start_idx < adjacency_list_.size(); start_idx++) {
+      for (int& middle_idx : adjacency_list_[start_idx]) {
+        if (start_idx > middle_idx) memory[start_idx][middle_idx].emplace_back(-1);
+        for (int& last_idx : adjacency_list_[middle_idx]) {
+          if (start_idx > last_idx && middle_idx > last_idx)
+            memory[start_idx][last_idx].emplace_back(middle_idx);
         }
       }
     }
 
-    std::vector<int> path;
-    for (int i = 0; i < status_map.size(); i++) {
-      DepthFirstSearch(i, i, path, ret, 1, status_map, memory);
+    for (int start_idx = 0; start_idx < adjacency_list_.size(); start_idx++) {
+      for (int& middle_idx : adjacency_list_[start_idx]) {
+        if (middle_idx < start_idx) break;
+        for (int& last_idx : adjacency_list_[middle_idx]) {
+          if (last_idx <= start_idx) break;
+          std::vector<int> path = {ids_[start_idx], ids_[middle_idx], ids_[last_idx]};
+          status_map[start_idx] = true, status_map[middle_idx] = true, status_map[last_idx] = true;
+          for (int& x : adjacency_list_[last_idx]) {
+            if (x == start_idx) ret.emplace_back(path);
+            if (x > start_idx && status_map[x] == false) DepthFirstSearch(x, start_idx, path, ret, 4, status_map, memory);
+          }
+          status_map[start_idx] = false, status_map[middle_idx] = false, status_map[last_idx] = false;
+        }
+      }
     }
+
     std::sort(ret.begin(), ret.end(), Compare);
   }
 
@@ -75,14 +83,12 @@ private:
 
   void ConstructAdjacencyList(std::unordered_map<int, int>& m,
       std::vector<int>& transfer_from_ids, std::vector<int>& transfer_to_ids) {
-    for (int i = 0; i < transfer_from_ids.size(); i++) {
-      if (m.find(transfer_from_ids[i]) != m.end() && m.find(transfer_to_ids[i]) != m.end()) {
+    for (int i = 0; i < transfer_from_ids.size(); i++)
+      if (m.find(transfer_from_ids[i]) != m.end() && m.find(transfer_to_ids[i]) != m.end())
         adjacency_list_[m[transfer_from_ids[i]]].emplace_back(m[transfer_to_ids[i]]);
-      }
-    }
-    for (int i = 0; i < adjacency_list_.size(); i++) {
+
+    for (int i = 0; i < adjacency_list_.size(); i++)
       std::sort(adjacency_list_[i].begin(), adjacency_list_[i].end(), std::greater<int>());
-    }
   }
 
   void DepthFirstSearch(const int& idx, const int& first_idx, 
@@ -92,7 +98,7 @@ private:
     path.emplace_back(ids_[idx]);
     for (int& next_idx : adjacency_list_[idx]) {
       if (next_idx < first_idx) break;
-      if (next_idx == first_idx && depth >= 3 && depth <= 5) {
+      if (next_idx == first_idx && depth <= 5) {
         ret.emplace_back(path);
       }
       if (next_idx != first_idx && depth == 5) {
@@ -136,14 +142,14 @@ private:
 int main(int argc, char** argv) {
   // DirectedGraph directed_graph("../data/test_data.txt");
   // DirectedGraph directed_graph("../data/HWcode2020-TestData/testData/test_data.txt");
-  DirectedGraph directed_graph("/data/test_data.txt");
-  // DirectedGraph directed_graph("../data/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
+  // DirectedGraph directed_graph("/data/test_data.txt");
+  DirectedGraph directed_graph("../data/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
 
   std::vector<std::vector<int> > ret;
   directed_graph.FindAllCycles(ret);
 
-  // std::ofstream outfile("go.txt", std::ios::out);
-  std::ofstream outfile("/projects/student/result.txt", std::ios::out);
+  std::ofstream outfile("go.txt", std::ios::out);
+  // std::ofstream outfile("/projects/student/result.txt", std::ios::out);
   outfile << ret.size() << std::endl;
   for (std::vector<int>& path : ret) {
     for (int i = 0; i < path.size()-1; i++)

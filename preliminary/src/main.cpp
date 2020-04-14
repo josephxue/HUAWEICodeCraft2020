@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #include <vector>
 #include <string>
 #include <fstream>
@@ -9,37 +11,32 @@
 class DirectedGraph {
 public:
   DirectedGraph(std::string filename) {
-    std::vector<int> transfer_from_ids;
-    std::vector<int> transfer_to_ids;
-
-    std::ifstream infile(filename.c_str());
-    int transfer_from_id, transfer_to_id, val;
-    char comma;
-    while (infile >> transfer_from_id >> comma >> transfer_to_id >> comma >> val) {
-      transfer_from_ids.emplace_back(transfer_from_id);
-      transfer_to_ids.emplace_back(transfer_to_id);
+    FILE *fp = fopen(filename.c_str(), "r");
+    if (fp == NULL) {
+      printf("file open error\n");
+      exit(1);
     }
-    infile.close();
 
-    std::vector<int> ids;
-    std::vector<int> tmp_from = transfer_from_ids;
-    std::vector<int> tmp_to = transfer_to_ids;
-    std::sort(tmp_from.begin(), tmp_from.end());
-    std::sort(tmp_to.begin(), tmp_to.end());
-    std::set_intersection(
-        tmp_from.begin(), tmp_from.end(), 
-        tmp_to.begin(), tmp_to.end(),
-        std::back_inserter(ids));
-    ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
-    ids_ = ids;
+    std::vector<int> inputs;
+    int transfer_from_id, transfer_to_id, val;
+    int ret;
+    while (fscanf(fp, "%d,%d,%d", &transfer_from_id, &transfer_to_id, &val) > 0) {
+      inputs.emplace_back(transfer_from_id);
+      inputs.emplace_back(transfer_to_id);
+    }
+    fclose(fp);
+
+    ids_ = inputs;
+    std::sort(ids_.begin(), ids_.end());
+    ids_.erase(std::unique(ids_.begin(), ids_.end()), ids_.end());
 
     adjacency_list_ = std::vector<std::vector<int> >(ids_.size());
     std::unordered_map<int, int> m;
-    for (int i = 0; i < ids.size(); i++) {
+    for (int i = 0; i < ids_.size(); i++) {
       m[ids_[i]] = i;
     }
 
-    ConstructAdjacencyList(m, transfer_from_ids, transfer_to_ids);
+    ConstructAdjacencyList(m, inputs);
   }
 
   ~DirectedGraph() {}
@@ -58,17 +55,21 @@ public:
       }
     }
 
+    std::vector<int> path;
     for (int start_idx = 0; start_idx < adjacency_list_.size(); start_idx++) {
       for (int& middle_idx : adjacency_list_[start_idx]) {
         if (middle_idx < start_idx) break;
         for (int& last_idx : adjacency_list_[middle_idx]) {
           if (last_idx <= start_idx) break;
-          std::vector<int> path = {ids_[start_idx], ids_[middle_idx], ids_[last_idx]};
           status_map[start_idx] = true, status_map[middle_idx] = true, status_map[last_idx] = true;
+          path = {ids_[start_idx], ids_[middle_idx], ids_[last_idx]};
           for (int& x : adjacency_list_[last_idx]) {
             if (x == start_idx) ret.emplace_back(path);
-            if (x > start_idx && status_map[x] == false) DepthFirstSearch(x, start_idx, path, ret, 4, status_map, memory);
+            if (x > start_idx && status_map[x] == false) {
+              DepthFirstSearch(x, start_idx, path, ret, 4, status_map, memory);
+            }
           }
+          path.clear();
           status_map[start_idx] = false, status_map[middle_idx] = false, status_map[last_idx] = false;
         }
       }
@@ -81,11 +82,15 @@ private:
   std::vector<int> ids_;
   std::vector<std::vector<int> > adjacency_list_;
 
-  void ConstructAdjacencyList(std::unordered_map<int, int>& m,
-      std::vector<int>& transfer_from_ids, std::vector<int>& transfer_to_ids) {
-    for (int i = 0; i < transfer_from_ids.size(); i++)
-      if (m.find(transfer_from_ids[i]) != m.end() && m.find(transfer_to_ids[i]) != m.end())
-        adjacency_list_[m[transfer_from_ids[i]]].emplace_back(m[transfer_to_ids[i]]);
+  void ConstructAdjacencyList(std::unordered_map<int, int>& m, std::vector<int>& inputs) {
+    std::unordered_map<int, int>::iterator it1;
+    std::unordered_map<int, int>::iterator it2;
+    for (int i = 0; i < inputs.size(); i+=2) {
+      it1 = m.find(inputs[i]), it2 = m.find(inputs[i+1]);
+      if (it1 != m.end() && it2 != m.end()) {
+        adjacency_list_[it1->second].emplace_back(it2->second);
+      }
+    }
 
     for (int i = 0; i < adjacency_list_.size(); i++)
       std::sort(adjacency_list_[i].begin(), adjacency_list_[i].end(), std::greater<int>());
@@ -143,20 +148,36 @@ int main(int argc, char** argv) {
   // DirectedGraph directed_graph("../data/test_data.txt");
   // DirectedGraph directed_graph("../data/HWcode2020-TestData/testData/test_data.txt");
   // DirectedGraph directed_graph("/data/test_data.txt");
-  DirectedGraph directed_graph("../data/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
+  DirectedGraph directed_graph("/root/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
 
   std::vector<std::vector<int> > ret;
   directed_graph.FindAllCycles(ret);
 
-  std::ofstream outfile("go.txt", std::ios::out);
-  // std::ofstream outfile("/projects/student/result.txt", std::ios::out);
-  outfile << ret.size() << std::endl;
+  FILE *fp = fopen("go.txt", "w");
+  // FILE *fp = fopen("/projects/student/result.txt", "r");
+  if (fp == NULL) {
+    printf("file open error\n");
+    exit(1);
+  }
+
+  fprintf(fp, "%ld\n", ret.size());
   for (std::vector<int>& path : ret) {
     for (int i = 0; i < path.size()-1; i++)
-      outfile << path[i] << ",";
-    outfile << path[path.size()-1] << std::endl;
+      fprintf(fp, "%d,", path[i]);
+    fprintf(fp, "%d\n", path[path.size()-1]);
   }
-  outfile.close();
+  fclose(fp);
+  
+
+  // std::ofstream outfile("go.txt", std::ios::out);
+  // // std::ofstream outfile("/projects/student/result.txt", std::ios::out);
+  // outfile << ret.size() << std::endl;
+  // for (std::vector<int>& path : ret) {
+  //   for (int i = 0; i < path.size()-1; i++)
+  //     outfile << path[i] << ",";
+  //   outfile << path[path.size()-1] << std::endl;
+  // }
+  // outfile.close();
 
   return 0;
 }

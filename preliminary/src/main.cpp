@@ -42,37 +42,56 @@ public:
   ~DirectedGraph() {}
 
   void FindAllCycles(std::vector<std::vector<int> >& ret) {
-    std::vector<bool> status_map(adjacency_list_.size(), false);
+    status_map_ = std::vector<bool>(adjacency_list_.size(), false);
+    reachable_ = std::vector<bool>(adjacency_list_.size(), false);
 
-    std::vector<std::unordered_map<int, std::vector<int>>> memory(adjacency_list_.size());
+    memory_ = std::vector<std::unordered_map<int, std::vector<int>>>(adjacency_list_.size());
     for (int start_idx = 0; start_idx < adjacency_list_.size(); start_idx++) {
       for (int& middle_idx : adjacency_list_[start_idx]) {
-        if (start_idx > middle_idx) memory[start_idx][middle_idx].emplace_back(-1);
+        if (start_idx > middle_idx) memory_[middle_idx][start_idx].emplace_back(-1);
         for (int& last_idx : adjacency_list_[middle_idx]) {
           if (start_idx > last_idx && middle_idx > last_idx)
-            memory[start_idx][last_idx].emplace_back(middle_idx);
+            memory_[last_idx][start_idx].emplace_back(middle_idx);
         }
       }
     }
 
     std::vector<int> path;
     for (int start_idx = 0; start_idx < adjacency_list_.size(); start_idx++) {
-      for (int& middle_idx : adjacency_list_[start_idx]) {
-        if (middle_idx < start_idx) break;
-        for (int& last_idx : adjacency_list_[middle_idx]) {
-          if (last_idx <= start_idx) break;
-          status_map[start_idx] = true, status_map[middle_idx] = true, status_map[last_idx] = true;
-          path = {ids_[start_idx], ids_[middle_idx], ids_[last_idx]};
-          for (int& x : adjacency_list_[last_idx]) {
-            if (x == start_idx) ret.emplace_back(path);
-            if (x > start_idx && status_map[x] == false) {
-              DepthFirstSearch(x, start_idx, path, ret, 4, status_map, memory);
-            }
-          }
-          path.clear();
-          status_map[start_idx] = false, status_map[middle_idx] = false, status_map[last_idx] = false;
+      status_map_[start_idx] = true;
+      path.emplace_back(ids_[start_idx]);
+
+      for (auto& tmp : memory_[start_idx]) {
+        int local_first_idx = tmp.first;
+        if (local_first_idx > start_idx) {
+          reachable_[local_first_idx] = true;
         }
       }
+
+      for (int& middle_idx : adjacency_list_[start_idx]) {
+        if (middle_idx < start_idx) break;
+        status_map_[middle_idx] = true;
+        path.emplace_back(ids_[middle_idx]);
+        for (int& last_idx : adjacency_list_[middle_idx]) {
+          if (last_idx <= start_idx) break;
+          status_map_[last_idx] = true;
+          path.emplace_back(ids_[last_idx]);
+          for (int& x : adjacency_list_[last_idx]) {
+            if (x == start_idx) ret.emplace_back(path);
+            if (x > start_idx && status_map_[x] == false) {
+              DepthFirstSearch(x, start_idx, path, ret, 4);
+            }
+          }
+          path.pop_back();
+          status_map_[last_idx] = false;
+        }
+        path.pop_back();
+        status_map_[middle_idx] = false;
+      }
+      path.pop_back();
+      status_map_[start_idx] = false;
+
+      reachable_ = std::vector<bool>(adjacency_list_.size(), false);
     }
 
     std::sort(ret.begin(), ret.end(), Compare);
@@ -81,6 +100,9 @@ public:
 private:
   std::vector<int> ids_;
   std::vector<std::vector<int> > adjacency_list_;
+  std::vector<std::unordered_map<int, std::vector<int>>> memory_;
+  std::vector<bool> status_map_;
+  std::vector<bool> reachable_;
 
   void ConstructAdjacencyList(std::unordered_map<int, int>& m, std::vector<int>& inputs) {
     std::unordered_map<int, int>::iterator it1;
@@ -97,9 +119,8 @@ private:
   }
 
   void DepthFirstSearch(const int& idx, const int& first_idx, 
-      std::vector<int>& path, std::vector<std::vector<int> >& ret, int depth,
-      std::vector<bool>& status_map, std::vector<std::unordered_map<int, std::vector<int>>>& memory) {
-    status_map[idx] = true;
+      std::vector<int>& path, std::vector<std::vector<int> >& ret, int depth) {
+    status_map_[idx] = true;
     path.emplace_back(ids_[idx]);
     for (int& next_idx : adjacency_list_[idx]) {
       if (next_idx < first_idx) break;
@@ -107,12 +128,11 @@ private:
         ret.emplace_back(path);
       }
       if (next_idx != first_idx && depth == 5) {
-        std::unordered_map<int, std::vector<int>>::iterator it = memory[next_idx].find(first_idx);
-        if (it != memory[next_idx].end() && status_map[next_idx] == false) {
+        if (reachable_[next_idx] == true && status_map_[next_idx] == false) {
           path.emplace_back(ids_[next_idx]);
           bool have_minus = false;
-          for (int& middle_idx : it->second) {
-            if (middle_idx > 0 && status_map[middle_idx] == false) {
+          for (int& middle_idx : memory_[first_idx][next_idx]) {
+            if (middle_idx > 0 && status_map_[middle_idx] == false) {
               path.emplace_back(ids_[middle_idx]);
               ret.emplace_back(path);
               path.pop_back();
@@ -122,12 +142,12 @@ private:
           path.pop_back();
         }
       }
-      if (depth < 5 && status_map[next_idx] == false) {
-        DepthFirstSearch(next_idx, first_idx, path, ret, depth+1, status_map, memory);
+      if (depth < 5 && status_map_[next_idx] == false) {
+        DepthFirstSearch(next_idx, first_idx, path, ret, depth+1);
       }
     }
     path.pop_back();
-    status_map[idx] = false;
+    status_map_[idx] = false;
   }
 
   static bool Compare(std::vector<int> a, std::vector<int> b) {
@@ -147,14 +167,14 @@ private:
 int main(int argc, char** argv) {
   // DirectedGraph directed_graph("../data/test_data.txt");
   // DirectedGraph directed_graph("../data/HWcode2020-TestData/testData/test_data.txt");
-  // DirectedGraph directed_graph("/data/test_data.txt");
-  DirectedGraph directed_graph("/root/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
+  DirectedGraph directed_graph("/data/test_data.txt");
+  // DirectedGraph directed_graph("/root/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
 
   std::vector<std::vector<int> > ret;
   directed_graph.FindAllCycles(ret);
 
-  FILE *fp = fopen("go.txt", "w");
-  // FILE *fp = fopen("/projects/student/result.txt", "r");
+  // FILE *fp = fopen("go.txt", "w");
+  FILE *fp = fopen("/projects/student/result.txt", "w");
   if (fp == NULL) {
     printf("file open error\n");
     exit(1);
@@ -167,17 +187,6 @@ int main(int argc, char** argv) {
     fprintf(fp, "%d\n", path[path.size()-1]);
   }
   fclose(fp);
-  
-
-  // std::ofstream outfile("go.txt", std::ios::out);
-  // // std::ofstream outfile("/projects/student/result.txt", std::ios::out);
-  // outfile << ret.size() << std::endl;
-  // for (std::vector<int>& path : ret) {
-  //   for (int i = 0; i < path.size()-1; i++)
-  //     outfile << path[i] << ",";
-  //   outfile << path[path.size()-1] << std::endl;
-  // }
-  // outfile.close();
 
   return 0;
 }

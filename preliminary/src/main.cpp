@@ -19,6 +19,7 @@ public:
     }
 
     std::vector<int> inputs;
+    inputs.reserve(560000);
     int transfer_from_id, transfer_to_id, val;
     while (fscanf(fp, "%d,%d,%d", &transfer_from_id, &transfer_to_id, &val) > 0) {
       inputs.emplace_back(transfer_from_id);
@@ -51,59 +52,113 @@ public:
     status_map_ = std::vector<bool>(ids_num_, false);
     reachable_ = std::vector<bool>(ids_num_, false);
 
-    memory_ = std::vector<std::unordered_map<int, std::vector<int>>>(adjacency_list_.size());
-    for (int start_idx = 0; start_idx < ids_num_; start_idx++) {
-      for (int& middle_idx : adjacency_list_[start_idx]) {
-        if (start_idx > middle_idx) memory_[middle_idx][start_idx].emplace_back(-1);
-        for (int& last_idx : adjacency_list_[middle_idx]) {
-          if (start_idx > last_idx && middle_idx > last_idx)
-            memory_[last_idx][start_idx].emplace_back(middle_idx);
+    memory_ = std::vector<std::unordered_map<int, std::vector<int>>>(G_.size());
+    for (int idx1 = 0; idx1 < ids_num_; idx1++) {
+      for (int& idx2 : G_[idx1]) {
+        if (idx1 > idx2) memory_[idx2][idx1].emplace_back(-1);
+        for (int& idx3 : G_[idx2]) {
+          if (idx1 > idx3 && idx2 > idx3)
+            memory_[idx3][idx1].emplace_back(idx2);
         }
       }
     }
 
-    std::vector<int> path;
-    std::vector<int> local_first_idxs;
-    for (int start_idx = 0; start_idx < ids_num_; start_idx++) {
-      status_map_[start_idx] = true;
-
-      for (auto& tmp : memory_[start_idx]) {
-        int local_first_idx = tmp.first;
-        if (local_first_idx > start_idx) {
-          reachable_[local_first_idx] = true;
-          local_first_idxs.emplace_back(local_first_idx);
+    int local_idx1;
+    std::vector<int> local_idxs1;
+    for (int idx1 = 0; idx1 < ids_num_; idx1++) {
+      status_map_[idx1] = true;
+      for (auto& tmp : memory_[idx1]) {
+        local_idx1 = tmp.first;
+        if (local_idx1 > idx1) {
+          reachable_[local_idx1] = true;
+          local_idxs1.emplace_back(local_idx1);
         }
       }
 
-      for (int& middle_idx : adjacency_list_[start_idx]) {
-        if (middle_idx < start_idx) continue;
-        status_map_[middle_idx] = true;
-        for (int& last_idx : adjacency_list_[middle_idx]) {
-          if (last_idx <= start_idx) continue;
-          status_map_[last_idx] = true;
-          for (int& x : adjacency_list_[last_idx]) {
-            if (x == start_idx) {
-              ret_[0][ret_num_[0]*ret_step_[0]]   = start_idx;
-              ret_[0][ret_num_[0]*ret_step_[0]+1] = middle_idx;
-              ret_[0][ret_num_[0]*ret_step_[0]+2] = last_idx;
+      for (int& idx2 : G_[idx1]) {
+        if (idx2 < idx1) continue;
+        status_map_[idx2] = true;
+
+        for (int& idx3 : G_[idx2]) {
+          if (idx3 <= idx1) continue;
+          status_map_[idx3] = true;
+
+          for (int& idx4 : G_[idx3]) {
+            if (idx4 < idx1) continue;
+            if (idx4 == idx1) {
+              ret_[0][ret_num_[0]*ret_step_[0]]   = idx1;
+              ret_[0][ret_num_[0]*ret_step_[0]+1] = idx2;
+              ret_[0][ret_num_[0]*ret_step_[0]+2] = idx3;
               ret_num_[0]++;
               continue;
             }
-            if (x > start_idx && status_map_[x] == false) {
-              path = {start_idx, middle_idx, last_idx};
-              DepthFirstSearch(x, start_idx, path, 4);
-              path.clear();
+            if (idx4 > idx1 && status_map_[idx4] == false) {
+              status_map_[idx4] = true;
+
+              for (int& idx5 : G_[idx4]) {
+                if (idx5 < idx1) continue;
+                if (idx5 == idx1) {
+                  ret_[1][ret_num_[1]*ret_step_[1]]   = idx1;
+                  ret_[1][ret_num_[1]*ret_step_[1]+1] = idx2;
+                  ret_[1][ret_num_[1]*ret_step_[1]+2] = idx3;
+                  ret_[1][ret_num_[1]*ret_step_[1]+3] = idx4;
+                  ret_num_[1]++;
+                  continue;
+                }
+                if (idx5 > idx1 && status_map_[idx5] == false) {
+                  status_map_[idx5] = true;
+
+                  for (int& idx6 : G_[idx5]) {
+                    if (idx6 < idx1) continue;
+                    if (idx6 == idx1) {
+                      ret_[2][ret_num_[2]*ret_step_[2]]   = idx1;
+                      ret_[2][ret_num_[2]*ret_step_[2]+1] = idx2;
+                      ret_[2][ret_num_[2]*ret_step_[2]+2] = idx3;
+                      ret_[2][ret_num_[2]*ret_step_[2]+3] = idx4;
+                      ret_[2][ret_num_[2]*ret_step_[2]+4] = idx5;
+                      ret_num_[2]++;
+                      continue;
+                    }
+                    if (idx6 > idx1 && reachable_[idx6] == true && status_map_[idx6] == false) {
+                      for (int& idx7 : memory_[idx1][idx6]) {
+                        if (idx7 > 0 && status_map_[idx7] == false) {
+                          ret_[4][ret_num_[4]*ret_step_[4]]   = idx1;
+                          ret_[4][ret_num_[4]*ret_step_[4]+1] = idx2;
+                          ret_[4][ret_num_[4]*ret_step_[4]+2] = idx3;
+                          ret_[4][ret_num_[4]*ret_step_[4]+3] = idx4;
+                          ret_[4][ret_num_[4]*ret_step_[4]+4] = idx5;
+                          ret_[4][ret_num_[4]*ret_step_[4]+5] = idx6;
+                          ret_[4][ret_num_[4]*ret_step_[4]+6] = idx7;
+                          ret_num_[4]++;
+                          continue;
+                        }
+                        if (idx7 == -1) {
+                          ret_[3][ret_num_[3]*ret_step_[3]]   = idx1;
+                          ret_[3][ret_num_[3]*ret_step_[3]+1] = idx2;
+                          ret_[3][ret_num_[3]*ret_step_[3]+2] = idx3;
+                          ret_[3][ret_num_[3]*ret_step_[3]+3] = idx4;
+                          ret_[3][ret_num_[3]*ret_step_[3]+4] = idx5;
+                          ret_[3][ret_num_[3]*ret_step_[3]+5] = idx6;
+                          ret_num_[3]++;
+                        }
+                      }
+                    }
+                  }
+                  status_map_[idx5] = false;
+                }
+              }
+              status_map_[idx4] = false;
             }
           }
-          status_map_[last_idx] = false;
+          status_map_[idx3] = false;
         }
-        status_map_[middle_idx] = false;
+        status_map_[idx2] = false;
       }
-      status_map_[start_idx] = false;
+      status_map_[idx1] = false;
 
-      for (int& local_first_idx : local_first_idxs)
-        reachable_[local_first_idx] = false;
-      local_first_idxs.clear();
+      for (int& local_idx1 : local_idxs1)
+        reachable_[local_idx1] = false;
+      local_idxs1.clear();
     }
   }
 
@@ -135,11 +190,12 @@ private:
   std::vector<std::string> ids_line_;
   int ids_num_;
 
-  std::vector<std::vector<int> > adjacency_list_;
+  std::vector<std::vector<int> > G_;
   std::vector<std::unordered_map<int, std::vector<int>>> memory_;
   std::vector<bool> status_map_;
   std::vector<bool> reachable_;
   std::vector<int> in_degrees_;
+  std::vector<int> out_degrees_;
   int* ret3_ = new int[4*500000]; 
   int* ret4_ = new int[4*500000]; 
   int* ret5_ = new int[8*1000000];
@@ -150,13 +206,13 @@ private:
   int ret_step_[5] = {4, 4, 8, 8, 8}; 
 
   void ConstructAdjacencyList(std::unordered_map<int, int>& m, std::vector<int>& inputs) {
-    adjacency_list_ = std::vector<std::vector<int> >(ids_num_);
+    G_ = std::vector<std::vector<int> >(ids_num_);
     in_degrees_ = std::vector<int>(ids_num_, 0);
 
     int from = -1; int to = -1;
     for (int i = 0; i < inputs.size(); i+=2) {
       from = m[inputs[i]]; to = m[inputs[i+1]];
-      adjacency_list_[from].emplace_back(to);
+      G_[from].emplace_back(to);
       in_degrees_[to]++;
     }
 
@@ -172,55 +228,18 @@ private:
     while (!q.empty()) {
       u = q.front();
       q.pop();
-      for (int& v : adjacency_list_[u]) {
+      for (int& v : G_[u]) {
         if (0 == --degrees[v]) q.push(v);
       }
     }
 
     for (int i = 0; i < ids_num_; i++) {
-      if (degrees[i] == 0) adjacency_list_[i].clear();
-      else if (do_sorting) std::sort(adjacency_list_[i].begin(), adjacency_list_[i].end());
+      if (degrees[i] == 0) G_[i].clear();
+      else if (do_sorting) std::sort(G_[i].begin(), G_[i].end());
     }
-  }
-
-  void DepthFirstSearch(const int& idx, const int& first_idx, std::vector<int>& path, int depth) {
-    status_map_[idx] = true;
-    path.emplace_back(idx);
-    for (int& next_idx : adjacency_list_[idx]) {
-      if (next_idx < first_idx) continue;
-      if (next_idx == first_idx && depth <= 5) {
-        for (int k = 0; k < depth; k++) 
-          ret_[depth-3][ret_num_[depth-3]*ret_step_[depth-3]+k] = path[k];
-        ret_num_[depth-3]++;
-      }
-      if (next_idx != first_idx && depth == 5) {
-        if (reachable_[next_idx] == true && status_map_[next_idx] == false) {
-          path.emplace_back(next_idx);
-          for (int& middle_idx : memory_[first_idx][next_idx]) {
-            if (middle_idx > 0 && status_map_[middle_idx] == false) {
-              path.emplace_back(middle_idx);
-              for (int k = 0; k < 7; k++)
-                ret_[4][ret_num_[4]*ret_step_[depth-3]+k] = path[k];
-              ret_num_[4]++;
-              path.pop_back();
-            }
-            if (middle_idx == -1) {
-              for (int k = 0; k < 6; k++)
-                ret_[3][ret_num_[3]*ret_step_[depth-3]+k] = path[k];
-              ret_num_[3]++;
-            }
-          }
-          path.pop_back();
-        }
-      }
-      if (depth < 5 && status_map_[next_idx] == false) {
-        DepthFirstSearch(next_idx, first_idx, path, depth+1);
-      }
-    }
-    path.pop_back();
-    status_map_[idx] = false;
   }
 };
+
 
 int main(int argc, char** argv) {
   // DirectedGraph directed_graph("../data/test_data.txt");

@@ -43,7 +43,9 @@ public:
     ConstructAdjacencyList(m, inputs);
   }
 
-  ~DirectedGraph() {}
+  ~DirectedGraph() {
+    delete[](ret3_); delete[](ret4_); delete[](ret5_); delete[](ret6_); delete[](ret7_);
+  }
 
   void FindAllCycles() {
     status_map_ = std::vector<bool>(ids_num_, false);
@@ -80,14 +82,18 @@ public:
           if (last_idx <= start_idx) continue;
           status_map_[last_idx] = true;
           for (int& x : adjacency_list_[last_idx]) {
-            path = {start_idx, middle_idx, last_idx};
             if (x == start_idx) {
-              ret_[0].emplace_back(path);
+              ret_[0][ret_num_[0]*ret_step_[0]]   = start_idx;
+              ret_[0][ret_num_[0]*ret_step_[0]+1] = middle_idx;
+              ret_[0][ret_num_[0]*ret_step_[0]+2] = last_idx;
+              ret_num_[0]++;
+              continue;
             }
             if (x > start_idx && status_map_[x] == false) {
+              path = {start_idx, middle_idx, last_idx};
               DepthFirstSearch(x, start_idx, path, 4);
+              path.clear();
             }
-            path.clear();
           }
           status_map_[last_idx] = false;
         }
@@ -108,17 +114,17 @@ public:
       exit(1);
     }
 
-    fprintf(fp, "%ld\n", ret_[0].size()+ret_[1].size()+ret_[2].size()+ret_[3].size()+ret_[4].size());
+    fprintf(fp, "%d\n", ret_num_[0]+ret_num_[1]+ret_num_[2]+ret_num_[3]+ret_num_[4]);
     std::string item;
     std::vector<int> path;
-    for (std::vector<std::vector<int> >& r : ret_) {
-      for (std::vector<int> path : r) {
-        for (int i = 0; i < path.size()-1; i++) {
-          item = ids_comma_[path[i]];
-          fwrite(item.c_str(), item.size(), sizeof(char), fp);
+    for (int d = 3; d <= 7; d++) {
+      for (int i = 0; i < ret_num_[d-3]; i++) {
+        for (int j = 0; j < d-1; j++) {
+          item = ids_comma_[ret_[d-3][i*ret_step_[d-3]+j]];
+          fwrite(item.c_str(), item.size(), sizeof(char), fp); 
         }
-        item = ids_line_[path[path.size()-1]];
-        fwrite(item.c_str(), item.size(), sizeof(char), fp);
+        item = ids_line_[ret_[d-3][i*ret_step_[d-3]+d-1]];
+        fwrite(item.c_str(), item.size(), sizeof(char), fp); 
       }
     }
     fclose(fp);
@@ -134,7 +140,14 @@ private:
   std::vector<bool> status_map_;
   std::vector<bool> reachable_;
   std::vector<int> in_degrees_;
-  std::vector<std::vector<int> > ret_[5];
+  int* ret3_ = new int[4*500000]; 
+  int* ret4_ = new int[4*500000]; 
+  int* ret5_ = new int[8*1000000];
+  int* ret6_ = new int[8*2000000];
+  int* ret7_ = new int[8*3000000];
+  int* ret_[5] = {ret3_, ret4_, ret5_, ret6_, ret7_};
+  int ret_num_[5] = {0, 0, 0, 0, 0}; 
+  int ret_step_[5] = {4, 4, 8, 8, 8}; 
 
   void ConstructAdjacencyList(std::unordered_map<int, int>& m, std::vector<int>& inputs) {
     adjacency_list_ = std::vector<std::vector<int> >(ids_num_);
@@ -176,7 +189,9 @@ private:
     for (int& next_idx : adjacency_list_[idx]) {
       if (next_idx < first_idx) continue;
       if (next_idx == first_idx && depth <= 5) {
-        ret_[depth-3].emplace_back(path);
+        for (int k = 0; k < depth; k++) 
+          ret_[depth-3][ret_num_[depth-3]*ret_step_[depth-3]+k] = path[k];
+        ret_num_[depth-3]++;
       }
       if (next_idx != first_idx && depth == 5) {
         if (reachable_[next_idx] == true && status_map_[next_idx] == false) {
@@ -184,10 +199,16 @@ private:
           for (int& middle_idx : memory_[first_idx][next_idx]) {
             if (middle_idx > 0 && status_map_[middle_idx] == false) {
               path.emplace_back(middle_idx);
-              ret_[4].emplace_back(path);
+              for (int k = 0; k < 7; k++)
+                ret_[4][ret_num_[4]*ret_step_[depth-3]+k] = path[k];
+              ret_num_[4]++;
               path.pop_back();
             }
-            if (middle_idx == -1) ret_[3].emplace_back(path); 
+            if (middle_idx == -1) {
+              for (int k = 0; k < 6; k++)
+                ret_[3][ret_num_[3]*ret_step_[depth-3]+k] = path[k];
+              ret_num_[3]++;
+            }
           }
           path.pop_back();
         }

@@ -62,7 +62,7 @@ public:
 
     std::vector<int> path;
     std::vector<int> local_first_idxs;
-    for (int start_idx = 0; start_idx < ids_num_; start_idx++) {
+    for (int start_idx = ids_num_-1; start_idx >= 0; start_idx--) {
       status_map_[start_idx] = true;
 
       for (auto& tmp : memory_[start_idx]) {
@@ -74,10 +74,10 @@ public:
       }
 
       for (int& middle_idx : adjacency_list_[start_idx]) {
-        if (middle_idx < start_idx) continue;
+        if (middle_idx < start_idx) break;
         status_map_[middle_idx] = true;
         for (int& last_idx : adjacency_list_[middle_idx]) {
-          if (last_idx <= start_idx) continue;
+          if (last_idx <= start_idx) break;
           status_map_[last_idx] = true;
           for (int& x : adjacency_list_[last_idx]) {
             path = {start_idx, middle_idx, last_idx};
@@ -110,10 +110,12 @@ public:
 
     fprintf(fp, "%ld\n", ret_[0].size()+ret_[1].size()+ret_[2].size()+ret_[3].size()+ret_[4].size());
     std::string item;
+    std::vector<int> path;
     for (std::vector<std::vector<int> >& r : ret_) {
-      for (std::vector<int>& path : r) {
-        for (int i = 0; i < path.size()-1; i++) {
-          item = ids_comma_[path[i]];
+      for (int i = r.size()-1; i >= 0; i--) {
+        path = r[i];
+        for (int j = 0; j < path.size()-1; j++) {
+          item = ids_comma_[path[j]];
           fwrite(item.c_str(), item.size(), sizeof(char), fp);
         }
         item = ids_line_[path[path.size()-1]];
@@ -169,7 +171,7 @@ private:
 
     for (int i = 0; i < ids_num_; i++) {
       if (degrees[i] == 0) adjacency_list_[i].clear();
-      else if (do_sorting) std::sort(adjacency_list_[i].begin(), adjacency_list_[i].end());
+      else if (do_sorting) std::sort(adjacency_list_[i].begin(), adjacency_list_[i].end(), std::greater<int>());
     }
   }
 
@@ -177,7 +179,7 @@ private:
     status_map_[idx] = true;
     path.emplace_back(idx);
     for (int& next_idx : adjacency_list_[idx]) {
-      if (next_idx < first_idx) continue;
+      if (next_idx < first_idx) break;
       if (next_idx == first_idx && depth <= 5) {
         ret_[depth-3].emplace_back(path);
       }
@@ -207,13 +209,13 @@ private:
 int main(int argc, char** argv) {
   // DirectedGraph directed_graph("../data/test_data.txt");
   // DirectedGraph directed_graph("../data/HWcode2020-TestData/testData/test_data.txt");
-  // DirectedGraph directed_graph("/data/test_data.txt");
-  DirectedGraph directed_graph("/root/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
+  DirectedGraph directed_graph("/data/test_data.txt");
+  // DirectedGraph directed_graph("/root/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
 
   directed_graph.FindAllCycles();
 
-  directed_graph.WriteFile("go.txt");
-  // directed_graph.WriteFile("/projects/student/result.txt");
+  // directed_graph.WriteFile("go.txt");
+  directed_graph.WriteFile("/projects/student/result.txt");
 
   return 0;
 }

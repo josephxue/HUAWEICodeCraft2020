@@ -184,7 +184,6 @@ private:
       if (next_idx != first_idx && depth == 5) {
         if (reachable_[next_idx] == true && status_map_[next_idx] == false) {
           path.emplace_back(next_idx);
-          bool have_minus = false;
           for (int& middle_idx : memory_[first_idx][next_idx]) {
             if (middle_idx > 0 && status_map_[middle_idx] == false) {
               path.emplace_back(middle_idx);

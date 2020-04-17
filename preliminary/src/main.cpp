@@ -84,7 +84,6 @@ public:
       if (G_[idx1].empty()) continue;
       if (G_[idx1][G_[idx1].size()-1] < idx1) continue;
       path[0] = idx1;
-      status_map_[idx1] = true;
 
       for (auto& tmp : memory_[idx1]) {
         local_idx1 = tmp.first;
@@ -171,7 +170,6 @@ public:
         }
         status_map_[idx2] = false;
       }
-      status_map_[idx1] = false;
 
       for (int& local_idx1 : local_idxs1)
         reachable_[local_idx1] = false;

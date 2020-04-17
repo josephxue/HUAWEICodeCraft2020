@@ -65,6 +65,7 @@ public:
 
     int local_idx1;
     std::vector<int> local_idxs1;
+    int bias;
     for (int idx1 = 0; idx1 < ids_num_; idx1++) {
       status_map_[idx1] = true;
       for (auto& tmp : memory_[idx1]) {
@@ -86,9 +87,10 @@ public:
           for (int& idx4 : G_[idx3]) {
             if (idx4 < idx1) continue;
             if (idx4 == idx1) {
-              ret_[0][ret_num_[0]*ret_step_[0]]   = idx1;
-              ret_[0][ret_num_[0]*ret_step_[0]+1] = idx2;
-              ret_[0][ret_num_[0]*ret_step_[0]+2] = idx3;
+              bias = ret_num_[0]*ret_step_[0];
+              ret_[0][bias]   = idx1;
+              ret_[0][bias+1] = idx2;
+              ret_[0][bias+2] = idx3;
               ret_num_[0]++;
               continue;
             }
@@ -98,10 +100,11 @@ public:
               for (int& idx5 : G_[idx4]) {
                 if (idx5 < idx1) continue;
                 if (idx5 == idx1) {
-                  ret_[1][ret_num_[1]*ret_step_[1]]   = idx1;
-                  ret_[1][ret_num_[1]*ret_step_[1]+1] = idx2;
-                  ret_[1][ret_num_[1]*ret_step_[1]+2] = idx3;
-                  ret_[1][ret_num_[1]*ret_step_[1]+3] = idx4;
+                  bias = ret_num_[1]*ret_step_[1];
+                  ret_[1][bias]   = idx1;
+                  ret_[1][bias+1] = idx2;
+                  ret_[1][bias+2] = idx3;
+                  ret_[1][bias+3] = idx4;
                   ret_num_[1]++;
                   continue;
                 }
@@ -111,34 +114,37 @@ public:
                   for (int& idx6 : G_[idx5]) {
                     if (idx6 < idx1) continue;
                     if (idx6 == idx1) {
-                      ret_[2][ret_num_[2]*ret_step_[2]]   = idx1;
-                      ret_[2][ret_num_[2]*ret_step_[2]+1] = idx2;
-                      ret_[2][ret_num_[2]*ret_step_[2]+2] = idx3;
-                      ret_[2][ret_num_[2]*ret_step_[2]+3] = idx4;
-                      ret_[2][ret_num_[2]*ret_step_[2]+4] = idx5;
+                      bias = ret_num_[2]*ret_step_[2];
+                      ret_[2][bias]   = idx1;
+                      ret_[2][bias+1] = idx2;
+                      ret_[2][bias+2] = idx3;
+                      ret_[2][bias+3] = idx4;
+                      ret_[2][bias+4] = idx5;
                       ret_num_[2]++;
                       continue;
                     }
                     if (idx6 > idx1 && reachable_[idx6] == true && status_map_[idx6] == false) {
                       for (int& idx7 : memory_[idx1][idx6]) {
                         if (idx7 > 0 && status_map_[idx7] == false) {
-                          ret_[4][ret_num_[4]*ret_step_[4]]   = idx1;
-                          ret_[4][ret_num_[4]*ret_step_[4]+1] = idx2;
-                          ret_[4][ret_num_[4]*ret_step_[4]+2] = idx3;
-                          ret_[4][ret_num_[4]*ret_step_[4]+3] = idx4;
-                          ret_[4][ret_num_[4]*ret_step_[4]+4] = idx5;
-                          ret_[4][ret_num_[4]*ret_step_[4]+5] = idx6;
-                          ret_[4][ret_num_[4]*ret_step_[4]+6] = idx7;
+                          bias = ret_num_[4]*ret_step_[4];
+                          ret_[4][bias]   = idx1;
+                          ret_[4][bias+1] = idx2;
+                          ret_[4][bias+2] = idx3;
+                          ret_[4][bias+3] = idx4;
+                          ret_[4][bias+4] = idx5;
+                          ret_[4][bias+5] = idx6;
+                          ret_[4][bias+6] = idx7;
                           ret_num_[4]++;
                           continue;
                         }
                         if (idx7 == -1) {
-                          ret_[3][ret_num_[3]*ret_step_[3]]   = idx1;
-                          ret_[3][ret_num_[3]*ret_step_[3]+1] = idx2;
-                          ret_[3][ret_num_[3]*ret_step_[3]+2] = idx3;
-                          ret_[3][ret_num_[3]*ret_step_[3]+3] = idx4;
-                          ret_[3][ret_num_[3]*ret_step_[3]+4] = idx5;
-                          ret_[3][ret_num_[3]*ret_step_[3]+5] = idx6;
+                          bias = ret_num_[3]*ret_step_[3];
+                          ret_[3][bias]   = idx1;
+                          ret_[3][bias+1] = idx2;
+                          ret_[3][bias+2] = idx3;
+                          ret_[3][bias+3] = idx4;
+                          ret_[3][bias+4] = idx5;
+                          ret_[3][bias+5] = idx6;
                           ret_num_[3]++;
                         }
                       }
@@ -206,7 +212,8 @@ private:
   int ret_step_[5] = {4, 4, 8, 8, 8}; 
 
   void ConstructAdjacencyList(std::unordered_map<int, int>& m, std::vector<int>& inputs) {
-    G_ = std::vector<std::vector<int> >(ids_num_);
+    std::vector<int> tmp; tmp.reserve(50);
+    G_ = std::vector<std::vector<int> >(ids_num_, tmp);
     in_degrees_ = std::vector<int>(ids_num_, 0);
 
     int from = -1; int to = -1;

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <arm_neon.h>
 
 #include <queue>
 #include <vector>
@@ -59,6 +60,8 @@ public:
   }
 
   void FindAllCycles() {
+    int32x4_t p;
+
     status_map_ = std::vector<bool>(ids_num_, false);
     reachable_ = std::vector<bool>(ids_num_, false);
 
@@ -76,9 +79,11 @@ public:
     int local_idx1;
     std::vector<int> local_idxs1;
     int bias;
+    int path[8];
     for (int idx1 = 0; idx1 < ids_num_; idx1++) {
       if (G_[idx1].empty()) continue;
       if (G_[idx1][G_[idx1].size()-1] < idx1) continue;
+      path[0] = idx1;
       status_map_[idx1] = true;
 
       for (auto& tmp : memory_[idx1]) {
@@ -92,73 +97,65 @@ public:
       for (int& idx2 : G_[idx1]) {
         if (idx2 < idx1 || G_[idx2].empty()) continue;
         if (G_[idx2][G_[idx2].size()-1] < idx1) continue;
+        path[1] = idx2;
         status_map_[idx2] = true;
 
         for (int& idx3 : G_[idx2]) {
           if (idx3 <= idx1) continue;
+          path[2] = idx3;
           status_map_[idx3] = true;
 
           for (int& idx4 : G_[idx3]) {
             if (idx4 < idx1) continue;
             if (idx4 == idx1) {
-              bias = ret_num_[0]*ret_step_[0];
-              ret_[0][bias]   = idx1;
-              ret_[0][bias+1] = idx2;
-              ret_[0][bias+2] = idx3;
+              p = vld1q_s32(path);
+              vst1q_s32(ret_[0]+ret_num_[0]*4, p);
               ret_num_[0]++;
               continue;
             }
-            if (idx4 > idx1 && status_map_[idx4] == false) {
+            if (status_map_[idx4] == false) {
+              path[3] = idx4;
               status_map_[idx4] = true;
 
               for (int& idx5 : G_[idx4]) {
                 if (idx5 < idx1) continue;
                 if (idx5 == idx1) {
-                  bias = ret_num_[1]*ret_step_[1];
-                  ret_[1][bias]   = idx1;
-                  ret_[1][bias+1] = idx2;
-                  ret_[1][bias+2] = idx3;
-                  ret_[1][bias+3] = idx4;
+                  p = vld1q_s32(path);
+                  vst1q_s32(ret_[1]+ret_num_[1]*4, p);
                   ret_num_[1]++;
                   continue;
                 }
-                if (idx5 > idx1 && status_map_[idx5] == false) {
+                if (status_map_[idx5] == false) {
+                  path[4] = idx5;
                   status_map_[idx5] = true;
 
                   for (int& idx6 : G_[idx5]) {
                     if (idx6 < idx1) continue;
                     if (idx6 == idx1) {
-                      bias = ret_num_[2]*ret_step_[2];
-                      ret_[2][bias]   = idx1;
-                      ret_[2][bias+1] = idx2;
-                      ret_[2][bias+2] = idx3;
-                      ret_[2][bias+3] = idx4;
-                      ret_[2][bias+4] = idx5;
+                      p = vld1q_s32(path);
+                      vst1q_s32(ret_[2]+ret_num_[2]*8, p);
+                      p = vld1q_s32(path+4);
+                      vst1q_s32(ret_[2]+ret_num_[2]*8+4, p);
                       ret_num_[2]++;
                       continue;
                     }
-                    if (idx6 > idx1 && reachable_[idx6] == true && status_map_[idx6] == false) {
+                    if (reachable_[idx6] == true && status_map_[idx6] == false) {
+                      path[5] = idx6;
                       for (int& idx7 : memory_[idx1][idx6]) {
                         if (idx7 > 0 && status_map_[idx7] == false) {
-                          bias = ret_num_[4]*ret_step_[4];
-                          ret_[4][bias]   = idx1;
-                          ret_[4][bias+1] = idx2;
-                          ret_[4][bias+2] = idx3;
-                          ret_[4][bias+3] = idx4;
-                          ret_[4][bias+4] = idx5;
-                          ret_[4][bias+5] = idx6;
-                          ret_[4][bias+6] = idx7;
+                          path[6] = idx7;
+                          p = vld1q_s32(path);
+                          vst1q_s32(ret_[4]+ret_num_[4]*8, p);
+                          p = vld1q_s32(path+4);
+                          vst1q_s32(ret_[4]+ret_num_[4]*8+4, p);
                           ret_num_[4]++;
                           continue;
                         }
                         if (idx7 == -1) {
-                          bias = ret_num_[3]*ret_step_[3];
-                          ret_[3][bias]   = idx1;
-                          ret_[3][bias+1] = idx2;
-                          ret_[3][bias+2] = idx3;
-                          ret_[3][bias+3] = idx4;
-                          ret_[3][bias+4] = idx5;
-                          ret_[3][bias+5] = idx6;
+                          p = vld1q_s32(path);
+                          vst1q_s32(ret_[3]+ret_num_[3]*8, p);
+                          p = vld1q_s32(path+4);
+                          vst1q_s32(ret_[3]+ret_num_[3]*8+4, p);
                           ret_num_[3]++;
                         }
                       }
@@ -191,14 +188,15 @@ public:
 
     fprintf(fp, "%d\n", ret_num_[0]+ret_num_[1]+ret_num_[2]+ret_num_[3]+ret_num_[4]);
     std::string item;
-    std::vector<int> path;
+    int bias;
     for (int d = 3; d <= 7; d++) {
       for (int i = 0; i < ret_num_[d-3]; i++) {
+        bias = i*ret_step_[d-3];
         for (int j = 0; j < d-1; j++) {
-          item = ids_comma_[ret_[d-3][i*ret_step_[d-3]+j]];
+          item = ids_comma_[ret_[d-3][bias+j]];
           fwrite(item.c_str(), item.size(), sizeof(char), fp); 
         }
-        item = ids_line_[ret_[d-3][i*ret_step_[d-3]+d-1]];
+        item = ids_line_[ret_[d-3][bias+d-1]];
         fwrite(item.c_str(), item.size(), sizeof(char), fp); 
       }
     }

@@ -41,7 +41,17 @@ public:
       m[id] = ids_num_++;
     }
 
-    ConstructAdjacencyList(m, inputs);
+    std::vector<int> tmp; tmp.reserve(50);
+    G_ = std::vector<std::vector<int> >(ids_num_, tmp);
+    in_degrees_ = std::vector<int>(ids_num_, 0);
+
+    int from = -1; int to = -1;
+    for (int i = 0; i < inputs.size(); i+=2) {
+      from = m[inputs[i]]; to = m[inputs[i+1]];
+      G_[from].emplace_back(to);
+      in_degrees_[to]++;
+    }
+    TopoSort(in_degrees_, true);
   }
 
   ~DirectedGraph() {
@@ -67,7 +77,10 @@ public:
     std::vector<int> local_idxs1;
     int bias;
     for (int idx1 = 0; idx1 < ids_num_; idx1++) {
+      if (G_[idx1].empty()) continue;
+      if (G_[idx1][G_[idx1].size()-1] < idx1) continue;
       status_map_[idx1] = true;
+
       for (auto& tmp : memory_[idx1]) {
         local_idx1 = tmp.first;
         if (local_idx1 > idx1) {
@@ -77,7 +90,8 @@ public:
       }
 
       for (int& idx2 : G_[idx1]) {
-        if (idx2 < idx1) continue;
+        if (idx2 < idx1 || G_[idx2].empty()) continue;
+        if (G_[idx2][G_[idx2].size()-1] < idx1) continue;
         status_map_[idx2] = true;
 
         for (int& idx3 : G_[idx2]) {
@@ -201,7 +215,6 @@ private:
   std::vector<bool> status_map_;
   std::vector<bool> reachable_;
   std::vector<int> in_degrees_;
-  std::vector<int> out_degrees_;
   int* ret3_ = new int[4*500000]; 
   int* ret4_ = new int[4*500000]; 
   int* ret5_ = new int[8*1000000];
@@ -210,21 +223,6 @@ private:
   int* ret_[5] = {ret3_, ret4_, ret5_, ret6_, ret7_};
   int ret_num_[5] = {0, 0, 0, 0, 0}; 
   int ret_step_[5] = {4, 4, 8, 8, 8}; 
-
-  void ConstructAdjacencyList(std::unordered_map<int, int>& m, std::vector<int>& inputs) {
-    std::vector<int> tmp; tmp.reserve(50);
-    G_ = std::vector<std::vector<int> >(ids_num_, tmp);
-    in_degrees_ = std::vector<int>(ids_num_, 0);
-
-    int from = -1; int to = -1;
-    for (int i = 0; i < inputs.size(); i+=2) {
-      from = m[inputs[i]]; to = m[inputs[i+1]];
-      G_[from].emplace_back(to);
-      in_degrees_[to]++;
-    }
-
-    TopoSort(in_degrees_, true);
-  }
 
   void TopoSort(std::vector<int>& degrees, bool do_sorting) {
     std::queue<int> q;

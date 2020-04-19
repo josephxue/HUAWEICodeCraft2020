@@ -21,10 +21,10 @@ public:
     }
 
     int* inputs = new int[560000]; int inputs_size = 0;
-    int transfer_from_id, transfer_to_id, val;
-    while (fscanf(fp, "%d,%d,%d", &transfer_from_id, &transfer_to_id, &val) > 0) {
-      inputs[inputs_size] = transfer_from_id;
-      inputs[inputs_size+1] = transfer_to_id;
+    int send_id, recv_id, val;
+    while (fscanf(fp, "%d,%d,%d", &send_id, &recv_id, &val) > 0) {
+      inputs[inputs_size] = send_id;
+      inputs[inputs_size+1] = recv_id;
       inputs_size += 2;
     }
     fclose(fp);
@@ -47,22 +47,23 @@ public:
       m[id] = i;
     }
 
-    G_ = new int[280000*50];
+    G_     = new int[280000*50];
     inv_G_ = new int[280000*255];
     in_degrees_  = new int[ids_num_]; memset(in_degrees_,  0, ids_num_*sizeof(int));
     out_degrees_ = new int[ids_num_]; memset(out_degrees_, 0, ids_num_*sizeof(int));
 
-    int from = -1; int to = -1;
+    int send_idx = -1; int recv_idx = -1;
     for (int i = 0; i < inputs_size; i+=2) {
-      from = m[inputs[i]]; to = m[inputs[i+1]];
-      G_[from*50+out_degrees_[from]] = to;
-      inv_G_[to*255+in_degrees_[to]] = from;
-      in_degrees_[to]++;
-      out_degrees_[from]++;
+      send_idx = m[inputs[i]]; recv_idx = m[inputs[i+1]];
+      G_[send_idx*50+out_degrees_[send_idx]] = recv_idx;
+      inv_G_[recv_idx*255+in_degrees_[recv_idx]] = send_idx;
+      in_degrees_[recv_idx]++;
+      out_degrees_[send_idx]++;
     }
     delete[](inputs);
 
-    int* tmp1  = new int[ids_num_]; memcpy(tmp1,  in_degrees_,  ids_num_*sizeof(int));
+    // topo sort
+    int* tmp1 = new int[ids_num_]; memcpy(tmp1,  in_degrees_, ids_num_*sizeof(int));
     int* tmp2 = new int[ids_num_]; memcpy(tmp2, out_degrees_, ids_num_*sizeof(int));
 
     std::queue<int> q;

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <arm_neon.h>
 
 #include <queue>
@@ -19,57 +20,71 @@ public:
       exit(1);
     }
 
-    std::vector<int> inputs;
-    inputs.reserve(560000);
+    int* inputs = new int[560000]; int inputs_size = 0;
     int transfer_from_id, transfer_to_id, val;
     while (fscanf(fp, "%d,%d,%d", &transfer_from_id, &transfer_to_id, &val) > 0) {
-      inputs.emplace_back(transfer_from_id);
-      inputs.emplace_back(transfer_to_id);
+      inputs[inputs_size] = transfer_from_id;
+      inputs[inputs_size+1] = transfer_to_id;
+      inputs_size += 2;
     }
     fclose(fp);
 
-    std::vector<int> ids = inputs;
+    std::vector<int> ids(inputs, inputs+inputs_size);
     std::sort(ids.begin(), ids.end());
     ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
+    ids_num_ = ids.size();
 
-    ids_num_ = 0; 
     std::unordered_map<int, int> m;
-    ids_comma_.reserve(ids.size());
-    ids_line_.reserve(ids.size());
-    for (int& id : ids) {
+
+    ids_comma_.reserve(ids_num_);
+    ids_line_.reserve(ids_num_);
+
+    int id;
+    for (int i = 0; i < ids_num_; i++) {
+      id = ids[i];
       ids_comma_.emplace_back(std::to_string(id) + ',');
       ids_line_.emplace_back(std::to_string(id) + '\n');
-      m[id] = ids_num_++;
+      m[id] = i;
     }
 
-    std::vector<int> tmp; tmp.reserve(50);
-    G_ = std::vector<std::vector<int> >(ids_num_, tmp);
-    in_degrees_ = std::vector<int>(ids_num_, 0);
+    G_ = new int[280000*50];
+    in_degrees_  = new int[ids_num_]; memset(in_degrees_,  0, ids_num_*sizeof(int));
+    out_degrees_ = new int[ids_num_]; memset(out_degrees_, 0, ids_num_*sizeof(int));
 
     int from = -1; int to = -1;
-    for (int i = 0; i < inputs.size(); i+=2) {
+    for (int i = 0; i < inputs_size; i+=2) {
       from = m[inputs[i]]; to = m[inputs[i+1]];
-      G_[from].emplace_back(to);
+      G_[from*50+out_degrees_[from]] = to;
       in_degrees_[to]++;
+      out_degrees_[from]++;
     }
+    delete[](inputs);
     TopoSort(in_degrees_, true);
   }
 
   ~DirectedGraph() {
     delete[](ret3_); delete[](ret4_); delete[](ret5_); delete[](ret6_); delete[](ret7_);
+    delete[](in_degrees_); delete[](out_degrees_);
+    delete[](G_);
+    delete[](status_map_);
+    delete[](reachable_);
   }
 
   void FindAllCycles() {
     int32x4_t p;
 
-    status_map_ = std::vector<bool>(ids_num_, false);
-    reachable_ = std::vector<bool>(ids_num_, false);
+    status_map_ = new bool[ids_num_]; memset(status_map_, false, ids_num_*sizeof(bool));
+    reachable_  = new bool[ids_num_]; memset(reachable_,  false, ids_num_*sizeof(bool));
 
-    memory_ = std::vector<std::unordered_map<int, std::vector<int>>>(G_.size());
-    for (int idx1 = 0; idx1 < ids_num_; idx1++) {
-      for (int& idx2 : G_[idx1]) {
+    int idx1, idx2, idx3, idx4, idx5, idx6, idx7;
+
+    memory_ = std::vector<std::unordered_map<int, std::vector<int>>>(ids_num_);
+    for (idx1 = 0; idx1 < ids_num_; idx1++) {
+      for (int i = 0; i < out_degrees_[idx1]; i++) {
+        idx2 = G_[idx1*50+i];
         if (idx1 > idx2) memory_[idx2][idx1].emplace_back(-1);
-        for (int& idx3 : G_[idx2]) {
+        for (int j = 0; j < out_degrees_[idx2]; j++) {
+          idx3 = G_[idx2*50+j];
           if (idx1 > idx3 && idx2 > idx3)
             memory_[idx3][idx1].emplace_back(idx2);
         }
@@ -80,9 +95,9 @@ public:
     std::vector<int> local_idxs1;
     int bias;
     int path[8];
-    for (int idx1 = 0; idx1 < ids_num_; idx1++) {
-      if (G_[idx1].empty()) continue;
-      if (G_[idx1][G_[idx1].size()-1] < idx1) continue;
+    for (idx1 = 0; idx1 < ids_num_; idx1++) {
+      if (out_degrees_[idx1] == 0) continue;
+      if (G_[idx1*50+out_degrees_[idx1]-1] < idx1) continue;
       path[0] = idx1;
 
       for (auto& tmp : memory_[idx1]) {
@@ -93,18 +108,21 @@ public:
         }
       }
 
-      for (int& idx2 : G_[idx1]) {
-        if (idx2 < idx1 || G_[idx2].empty()) continue;
-        if (G_[idx2][G_[idx2].size()-1] < idx1) continue;
+      for (int i = 0; i < out_degrees_[idx1]; i++) {
+        idx2 = G_[idx1*50+i];
+        if (idx2 < idx1 || out_degrees_[idx2] == 0) continue;
+        if (G_[idx2*50+out_degrees_[idx2]-1] < idx1) continue;
         path[1] = idx2;
         status_map_[idx2] = true;
 
-        for (int& idx3 : G_[idx2]) {
+        for (int j = 0; j < out_degrees_[idx2]; j++) {
+          idx3 = G_[idx2*50+j];
           if (idx3 <= idx1) continue;
           path[2] = idx3;
           status_map_[idx3] = true;
 
-          for (int& idx4 : G_[idx3]) {
+          for (int k = 0; k < out_degrees_[idx3]; k++) {
+            idx4 = G_[idx3*50+k];
             if (idx4 < idx1) continue;
             if (idx4 == idx1) {
               p = vld1q_s32(path);
@@ -116,7 +134,8 @@ public:
               path[3] = idx4;
               status_map_[idx4] = true;
 
-              for (int& idx5 : G_[idx4]) {
+              for (int l = 0; l < out_degrees_[idx4]; l++) {
+                idx5 = G_[idx4*50+l];
                 if (idx5 < idx1) continue;
                 if (idx5 == idx1) {
                   p = vld1q_s32(path);
@@ -128,7 +147,8 @@ public:
                   path[4] = idx5;
                   status_map_[idx5] = true;
 
-                  for (int& idx6 : G_[idx5]) {
+                  for (int m = 0; m < out_degrees_[idx5]; m++) {
+                    idx6 = G_[idx5*50+m];
                     if (idx6 < idx1) continue;
                     if (idx6 == idx1) {
                       p = vld1q_s32(path);
@@ -206,11 +226,12 @@ private:
   std::vector<std::string> ids_line_;
   int ids_num_;
 
-  std::vector<std::vector<int> > G_;
+  int* G_;
   std::vector<std::unordered_map<int, std::vector<int>>> memory_;
-  std::vector<bool> status_map_;
-  std::vector<bool> reachable_;
-  std::vector<int> in_degrees_;
+  bool* status_map_;
+  bool* reachable_;
+  int* in_degrees_;
+  int* out_degrees_;
   int* ret3_ = new int[4*500000]; 
   int* ret4_ = new int[4*500000]; 
   int* ret5_ = new int[8*1000000];
@@ -220,23 +241,24 @@ private:
   int ret_num_[5] = {0, 0, 0, 0, 0}; 
   int ret_step_[5] = {4, 4, 8, 8, 8}; 
 
-  void TopoSort(std::vector<int>& degrees, bool do_sorting) {
+  void TopoSort(int* degrees, bool do_sorting) {
     std::queue<int> q;
     for (int i = 0; i < ids_num_; i++)
       if (0 == degrees[i]) q.push(i);
 
-    int u = -1;
+    int u, v;
     while (!q.empty()) {
       u = q.front();
       q.pop();
-      for (int& v : G_[u]) {
+      for (int i = 0; i < out_degrees_[u]; i++) {
+        v = G_[u*50+i];
         if (0 == --degrees[v]) q.push(v);
       }
     }
 
     for (int i = 0; i < ids_num_; i++) {
-      if (degrees[i] == 0) G_[i].clear();
-      else if (do_sorting) std::sort(G_[i].begin(), G_[i].end());
+      if (degrees[i] == 0) out_degrees_[i] = 0;
+      else if (do_sorting) std::sort(G_+i*50, G_+i*50+out_degrees_[i]);
     }
   }
 };
@@ -245,13 +267,14 @@ private:
 int main(int argc, char** argv) {
   // DirectedGraph directed_graph("../data/test_data.txt");
   // DirectedGraph directed_graph("../data/HWcode2020-TestData/testData/test_data.txt");
-  // DirectedGraph directed_graph("/data/test_data.txt");
-  DirectedGraph directed_graph("/root/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
+  DirectedGraph directed_graph("/data/test_data.txt");
+  // DirectedGraph directed_graph("/root/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
 
   directed_graph.FindAllCycles();
 
-  directed_graph.WriteFile("go.txt");
-  // directed_graph.WriteFile("/projects/student/result.txt");
+  // directed_graph.WriteFile("go.txt");
+  directed_graph.WriteFile("/projects/student/result.txt");
+  exit(0);
 
   return 0;
 }

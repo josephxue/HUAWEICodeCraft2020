@@ -130,8 +130,9 @@ public:
       for (int i = 0; i < in_degrees_[idx1]; i++) {
         idx2 = inv_G_[idx1*50+i];
         if (idx2 < idx1) continue;
-        status_map_[idx2*3+1] = true; effective_idxes[effective_idxes_size] = idx2; effective_idxes_size++;
-        status_map_[idx2*3+2] = true; tail_idxes[tail_idxes_size] = idx2; tail_idxes_size++; 
+        status_map_[idx2*3+1] = true; status_map_[idx2*3+2] = true;
+	effective_idxes[effective_idxes_size] = idx2; effective_idxes_size++;
+        tail_idxes[tail_idxes_size] = idx2; tail_idxes_size++; 
 
         for (int j = 0; j < in_degrees_[idx2]; j++) {
           idx3 = inv_G_[idx2*50+j];

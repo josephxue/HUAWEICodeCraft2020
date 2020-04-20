@@ -46,8 +46,8 @@ public:
     }
     delete[](ids);
 
-    G_     = new int[280000*50];
-    inv_G_ = new int[280000*50];
+    G_     = new int[ids_num_*50];
+    inv_G_ = new int[ids_num_*50];
     in_degrees_  = new int[ids_num_]; memset(in_degrees_,  0, ids_num_*sizeof(int));
     out_degrees_ = new int[ids_num_]; memset(out_degrees_, 0, ids_num_*sizeof(int));
 

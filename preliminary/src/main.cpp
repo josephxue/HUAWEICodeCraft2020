@@ -5,8 +5,6 @@
 #include <queue>
 #include <vector>
 #include <string>
-#include <fstream>
-#include <iostream>
 #include <algorithm>
 #include <unordered_map>
 
@@ -23,29 +21,30 @@ public:
     int* inputs = new int[560000]; int inputs_size = 0;
     int send_id, recv_id, val;
     while (fscanf(fp, "%d,%d,%d", &send_id, &recv_id, &val) > 0) {
-      inputs[inputs_size] = send_id;
+      inputs[inputs_size]   = send_id;
       inputs[inputs_size+1] = recv_id;
       inputs_size += 2;
     }
     fclose(fp);
 
-    std::vector<int> ids(inputs, inputs+inputs_size);
-    std::sort(ids.begin(), ids.end());
-    ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
-    ids_num_ = ids.size();
+    int* ids = new int[inputs_size];
+    memcpy(ids, inputs, inputs_size*sizeof(int));
+    std::sort(ids, ids+inputs_size);
+    ids_num_ = std::unique(ids, ids+inputs_size) - ids;
 
     std::unordered_map<int, int> m;
 
-    ids_comma_.reserve(ids_num_);
-    ids_line_.reserve(ids_num_);
+    ids_comma_ = std::vector<std::string>(ids_num_);
+    ids_line_  = std::vector<std::string>(ids_num_);
 
     int id;
     for (int i = 0; i < ids_num_; i++) {
       id = ids[i];
-      ids_comma_.emplace_back(std::to_string(id) + ',');
-      ids_line_.emplace_back(std::to_string(id) + '\n');
+      ids_comma_[i] = std::to_string(id) + ',';
+      ids_line_[i]  = std::to_string(id) + '\n';
       m[id] = i;
     }
+    delete[](ids);
 
     G_     = new int[280000*50];
     inv_G_ = new int[280000*255];
@@ -60,6 +59,7 @@ public:
       in_degrees_[recv_idx]++;
       out_degrees_[send_idx]++;
     }
+
     delete[](inputs);
 
     // topo sort
@@ -117,10 +117,9 @@ public:
 
     int idx1, idx2, idx3, idx4, idx5, idx6, idx7;
 
-    memory_ = std::vector<std::unordered_map<int, std::vector<int>>>(ids_num_);
-    int local_idx1;
-    std::vector<int> local_idxes1;
-    std::vector<int> effective_idxes;
+    int* tail_idxes = new int[255]; int tail_idxes_size = 0;
+    int* effective_idxes = new int[250000]; int effective_idxes_size = 0;
+
     int bias;
     int path[8];
     for (idx1 = 0; idx1 < ids_num_; idx1++) {
@@ -128,27 +127,22 @@ public:
       if (G_[idx1*50+out_degrees_[idx1]-1] < idx1) continue;
       path[0] = idx1;
 
-      status_map_[idx1*3+1] = true; effective_idxes.emplace_back(idx1);
+      status_map_[idx1*3+1] = true; effective_idxes[effective_idxes_size] = idx1; effective_idxes_size++;
       for (int i = 0; i < in_degrees_[idx1]; i++) {
         idx2 = inv_G_[idx1*255+i];
         if (idx2 < idx1) continue;
-        memory_[idx1][idx2].emplace_back(-1);
-        status_map_[idx2*3+1] = true; effective_idxes.emplace_back(idx2);
-        status_map_[idx2*3+2] = true; local_idxes1.emplace_back(idx2);
+        status_map_[idx2*3+1] = true; effective_idxes[effective_idxes_size] = idx2; effective_idxes_size++;
+        status_map_[idx2*3+2] = true; tail_idxes[tail_idxes_size] = idx2; tail_idxes_size++; 
 
         for (int j = 0; j < in_degrees_[idx2]; j++) {
           idx3 = inv_G_[idx2*255+j];
           if (idx3 < idx1) continue;
-          if (idx3 > idx1) {
-            memory_[idx1][idx3].emplace_back(idx2);
-            status_map_[idx3*3+2] = true; local_idxes1.emplace_back(idx3);
-          }
-          status_map_[idx3*3+1] = true; effective_idxes.emplace_back(idx3);
+          status_map_[idx3*3+1] = true; effective_idxes[effective_idxes_size] = idx3; effective_idxes_size++;
 
           for (int k = 0; k < in_degrees_[idx3]; k++) {
             idx4 = inv_G_[idx3*255+k];
             if (idx4 < idx1) continue;
-            status_map_[idx4*3+1] = true; effective_idxes.emplace_back(idx4);
+            status_map_[idx4*3+1] = true; effective_idxes[effective_idxes_size] = idx4; effective_idxes_size++;
           }
         }
       }
@@ -203,10 +197,23 @@ public:
                       ret_num_[2]++;
                       continue;
                     }
-                    if (status_map_[idx6*3+2] == true && status_map_[idx6*3] == false) {
+
+		    if (status_map_[idx6*3] == false) {
                       path[5] = idx6;
-                      for (int& idx7 : memory_[idx1][idx6]) {
-                        if (idx7 > 0 && status_map_[idx7*3] == false) {
+                      status_map_[idx6*3] = true;
+                      
+                      for (int n = 0; n < out_degrees_[idx6]; n++) {
+                        idx7 = G_[idx6*50+n];
+                        if (status_map_[idx7*3+1] == false) continue;
+                        if (idx7 == idx1) {
+                          p = vld1q_s32(path);
+                          vst1q_s32(ret_[3]+ret_num_[3]*8, p);
+                          p = vld1q_s32(path+4);
+                          vst1q_s32(ret_[3]+ret_num_[3]*8+4, p);
+                          ret_num_[3]++;
+			  continue;
+                        }
+			if (status_map_[idx7*3+2] == true && status_map_[idx7*3] == false) {
                           path[6] = idx7;
                           p = vld1q_s32(path);
                           vst1q_s32(ret_[4]+ret_num_[4]*8, p);
@@ -214,16 +221,10 @@ public:
                           vst1q_s32(ret_[4]+ret_num_[4]*8+4, p);
                           ret_num_[4]++;
                           continue;
-                        }
-                        if (idx7 == -1) {
-                          p = vld1q_s32(path);
-                          vst1q_s32(ret_[3]+ret_num_[3]*8, p);
-                          p = vld1q_s32(path+4);
-                          vst1q_s32(ret_[3]+ret_num_[3]*8+4, p);
-                          ret_num_[3]++;
-                        }
-                      }
-                    }
+			}
+		      }
+                      status_map_[idx6*3] = false;
+		    }
                   }
                   status_map_[idx5*3] = false;
                 }
@@ -236,14 +237,15 @@ public:
         status_map_[idx2*3] = false;
       }
 
-      for (int& local_idx1 : local_idxes1)
-        status_map_[local_idx1*3+2] = false;
-      local_idxes1.clear();
-
-      for (int& idx : effective_idxes)
-        status_map_[idx*3+1] = false;
-      effective_idxes.clear();
+      for (int i = 0; i < tail_idxes_size; i++) {
+        status_map_[tail_idxes[i]*3+2] = false;
+      }
+      for (int i = 0; i < effective_idxes_size; i++) {
+        status_map_[effective_idxes[i]*3+1] = false;
+      }
+      tail_idxes_size = 0; effective_idxes_size = 0;
     }
+    delete[](tail_idxes); delete[](effective_idxes);
   }
 
   void WriteFile(std::string filename) {
@@ -273,11 +275,11 @@ public:
 private:
   std::vector<std::string> ids_comma_;
   std::vector<std::string> ids_line_;
+
   int ids_num_;
 
   int* G_;
   int* inv_G_;
-  std::vector<std::unordered_map<int, std::vector<int>>> memory_;
   bool* status_map_;
   int* in_degrees_;
   int* out_degrees_;
@@ -295,14 +297,14 @@ private:
 int main(int argc, char** argv) {
   // DirectedGraph directed_graph("../data/test_data.txt");
   // DirectedGraph directed_graph("../data/HWcode2020-TestData/testData/test_data.txt");
-  DirectedGraph directed_graph("/data/test_data.txt");
-  // DirectedGraph directed_graph("/root/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
+  // DirectedGraph directed_graph("/data/test_data.txt");
+  DirectedGraph directed_graph("/root/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
 
   directed_graph.FindAllCycles();
 
-  // directed_graph.WriteFile("go.txt");
-  directed_graph.WriteFile("/projects/student/result.txt");
-  exit(0);
+  directed_graph.WriteFile("go.txt");
+  // directed_graph.WriteFile("/projects/student/result.txt");
+  // exit(0);
 
   return 0;
 }

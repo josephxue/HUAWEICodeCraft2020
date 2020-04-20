@@ -212,7 +212,7 @@ public:
                           ret_num_[3]++;
 			  continue;
                         }
-			if (status_map_[idx7*3+2] == true && status_map_[idx7*3] == false) {
+			if (status_map_[idx7*3] == false && status_map_[idx7*3+2] == true) {
                           path[6] = idx7;
                           p = vld1q_s32(path);
                           vst1q_s32(ret_[4]+ret_num_[4]*8, p);

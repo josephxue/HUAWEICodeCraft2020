@@ -47,7 +47,7 @@ public:
     delete[](ids);
 
     G_     = new int[280000*50];
-    inv_G_ = new int[280000*255];
+    inv_G_ = new int[280000*50];
     in_degrees_  = new int[ids_num_]; memset(in_degrees_,  0, ids_num_*sizeof(int));
     out_degrees_ = new int[ids_num_]; memset(out_degrees_, 0, ids_num_*sizeof(int));
 
@@ -55,7 +55,7 @@ public:
     for (int i = 0; i < inputs_size; i+=2) {
       send_idx = m[inputs[i]]; recv_idx = m[inputs[i+1]];
       G_[send_idx*50+out_degrees_[send_idx]] = recv_idx;
-      inv_G_[recv_idx*255+in_degrees_[recv_idx]] = send_idx;
+      inv_G_[recv_idx*50+in_degrees_[recv_idx]] = send_idx;
       in_degrees_[recv_idx]++;
       out_degrees_[send_idx]++;
     }
@@ -89,14 +89,13 @@ public:
       u = q.front();
       q.pop();
       for (int i = 0; i < in_degrees_[u]; i++) {
-        v = inv_G_[u*255+i];
+        v = inv_G_[u*50+i];
         if (0 == --tmp2[v]) q.push(v);
       }
     }
     for (int i = 0; i < ids_num_; i++) {
       if (tmp2[i] == 0) out_degrees_[i] = 0;
       std::sort(G_+i*50, G_+i*50+out_degrees_[i]);
-      std::sort(inv_G_+i*255, inv_G_+i*255+in_degrees_[i]);
     }
 
     delete[](tmp1); delete[](tmp2);
@@ -117,8 +116,8 @@ public:
 
     int idx1, idx2, idx3, idx4, idx5, idx6, idx7;
 
-    int* tail_idxes = new int[255]; int tail_idxes_size = 0;
-    int* effective_idxes = new int[250000]; int effective_idxes_size = 0;
+    int* tail_idxes = new int[50]; int tail_idxes_size = 0;
+    int* effective_idxes = new int[125000]; int effective_idxes_size = 0;
 
     int bias;
     int path[8];
@@ -129,18 +128,18 @@ public:
 
       status_map_[idx1*3+1] = true; effective_idxes[effective_idxes_size] = idx1; effective_idxes_size++;
       for (int i = 0; i < in_degrees_[idx1]; i++) {
-        idx2 = inv_G_[idx1*255+i];
+        idx2 = inv_G_[idx1*50+i];
         if (idx2 < idx1) continue;
         status_map_[idx2*3+1] = true; effective_idxes[effective_idxes_size] = idx2; effective_idxes_size++;
         status_map_[idx2*3+2] = true; tail_idxes[tail_idxes_size] = idx2; tail_idxes_size++; 
 
         for (int j = 0; j < in_degrees_[idx2]; j++) {
-          idx3 = inv_G_[idx2*255+j];
+          idx3 = inv_G_[idx2*50+j];
           if (idx3 < idx1) continue;
           status_map_[idx3*3+1] = true; effective_idxes[effective_idxes_size] = idx3; effective_idxes_size++;
 
           for (int k = 0; k < in_degrees_[idx3]; k++) {
-            idx4 = inv_G_[idx3*255+k];
+            idx4 = inv_G_[idx3*50+k];
             if (idx4 < idx1) continue;
             status_map_[idx4*3+1] = true; effective_idxes[effective_idxes_size] = idx4; effective_idxes_size++;
           }

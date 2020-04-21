@@ -3,16 +3,16 @@
 #include <arm_neon.h>
 
 #include <queue>
-#include <vector>
 #include <string>
+#include <vector>
 #include <algorithm>
 #include <unordered_map>
 
 
 class DirectedGraph {
 public:
-  DirectedGraph(std::string filename) {
-    FILE *fp = fopen(filename.c_str(), "r");
+  DirectedGraph(const char* filename) {
+    FILE *fp = fopen(filename, "r");
     if (fp == NULL) {
       printf("file open error\n");
       exit(1);
@@ -33,7 +33,6 @@ public:
     ids_num_ = std::unique(ids, ids+inputs_size) - ids;
 
     std::unordered_map<int, int> m;
-
     ids_comma_ = std::vector<std::string>(ids_num_);
     ids_line_  = std::vector<std::string>(ids_num_);
 
@@ -44,6 +43,7 @@ public:
       ids_line_[i]  = std::to_string(id) + '\n';
       m[id] = i;
     }
+
     delete[](ids);
 
     G_     = new int[ids_num_*50];
@@ -126,22 +126,21 @@ public:
       if (G_[idx1*50+out_degrees_[idx1]-1] < idx1) continue;
       path[0] = idx1;
 
-      status_map_[idx1*3+1] = true; effective_idxes[effective_idxes_size] = idx1; effective_idxes_size++;
       for (int i = 0; i < in_degrees_[idx1]; i++) {
         idx2 = inv_G_[idx1*50+i];
-        if (idx2 < idx1) continue;
+        if (idx2 <= idx1) continue;
         status_map_[idx2*3+1] = true; status_map_[idx2*3+2] = true;
 	effective_idxes[effective_idxes_size] = idx2; effective_idxes_size++;
         tail_idxes[tail_idxes_size] = idx2; tail_idxes_size++; 
 
         for (int j = 0; j < in_degrees_[idx2]; j++) {
           idx3 = inv_G_[idx2*50+j];
-          if (idx3 < idx1) continue;
+          if (idx3 <= idx1) continue;
           status_map_[idx3*3+1] = true; effective_idxes[effective_idxes_size] = idx3; effective_idxes_size++;
 
           for (int k = 0; k < in_degrees_[idx3]; k++) {
             idx4 = inv_G_[idx3*50+k];
-            if (idx4 < idx1) continue;
+            if (idx4 <= idx1) continue;
             status_map_[idx4*3+1] = true; effective_idxes[effective_idxes_size] = idx4; effective_idxes_size++;
           }
         }
@@ -160,67 +159,65 @@ public:
           path[2] = idx3;
           status_map_[idx3*3] = true;
 
+	  if (status_map_[idx3*3+2] == true) {
+            p = vld1q_s32(path);
+            vst1q_s32(ret_[0]+ret_num_[0]*4, p);
+            ret_num_[0]++;
+	  }
+
           for (int k = 0; k < out_degrees_[idx3]; k++) {
             idx4 = G_[idx3*50+k];
-            if (idx4 < idx1) continue;
-            if (idx4 == idx1) {
-              p = vld1q_s32(path);
-              vst1q_s32(ret_[0]+ret_num_[0]*4, p);
-              ret_num_[0]++;
-              continue;
-            }
-            if (status_map_[idx4*3] == false) {
+
+            if (idx4 > idx1 && status_map_[idx4*3] == false) {
               path[3] = idx4;
               status_map_[idx4*3] = true;
 
+	      if (status_map_[idx4*3+2] == true) {
+                p = vld1q_s32(path);
+                vst1q_s32(ret_[1]+ret_num_[1]*4, p);
+                ret_num_[1]++;
+	      }
+
               for (int l = 0; l < out_degrees_[idx4]; l++) {
                 idx5 = G_[idx4*50+l];
-                if (status_map_[idx5*3+1] == false) continue;
-                if (idx5 == idx1) {
-                  p = vld1q_s32(path);
-                  vst1q_s32(ret_[1]+ret_num_[1]*4, p);
-                  ret_num_[1]++;
-                  continue;
-                }
-                if (status_map_[idx5*3] == false) {
+
+                if (status_map_[idx5*3] == false && status_map_[idx5*3+1] == true) {
                   path[4] = idx5;
                   status_map_[idx5*3] = true;
 
+	          if (status_map_[idx5*3+2] == true) {
+                    p = vld1q_s32(path);
+                    vst1q_s32(ret_[2]+ret_num_[2]*8, p);
+                    p = vld1q_s32(path+4);
+                    vst1q_s32(ret_[2]+ret_num_[2]*8+4, p);
+                    ret_num_[2]++;
+	          }
+
                   for (int m = 0; m < out_degrees_[idx5]; m++) {
                     idx6 = G_[idx5*50+m];
-                    if (status_map_[idx6*3+1] == false) continue;
-                    if (idx6 == idx1) {
-                      p = vld1q_s32(path);
-                      vst1q_s32(ret_[2]+ret_num_[2]*8, p);
-                      p = vld1q_s32(path+4);
-                      vst1q_s32(ret_[2]+ret_num_[2]*8+4, p);
-                      ret_num_[2]++;
-                      continue;
-                    }
 
-		    if (status_map_[idx6*3] == false) {
+		    if (status_map_[idx6*3] == false && status_map_[idx6*3+1] == true) {
                       path[5] = idx6;
                       status_map_[idx6*3] = true;
                       
+	              if (status_map_[idx6*3+2] == true) {
+                        p = vld1q_s32(path);
+                        vst1q_s32(ret_[3]+ret_num_[3]*8, p);
+                        p = vld1q_s32(path+4);
+                        vst1q_s32(ret_[3]+ret_num_[3]*8+4, p);
+                        ret_num_[3]++;
+	              }
+
                       for (int n = 0; n < out_degrees_[idx6]; n++) {
                         idx7 = G_[idx6*50+n];
-                        if (status_map_[idx7*3+1] == false) continue;
-                        if (idx7 == idx1) {
-                          p = vld1q_s32(path);
-                          vst1q_s32(ret_[3]+ret_num_[3]*8, p);
-                          p = vld1q_s32(path+4);
-                          vst1q_s32(ret_[3]+ret_num_[3]*8+4, p);
-                          ret_num_[3]++;
-			  continue;
-                        }
-			if (status_map_[idx7*3] == false && status_map_[idx7*3+2] == true) {
+
+			if (status_map_[idx7*3] == false && status_map_[idx7*3+1] == true && status_map_[idx7*3+2] == true) {
                           path[6] = idx7;
                           p = vld1q_s32(path);
                           vst1q_s32(ret_[4]+ret_num_[4]*8, p);
                           p = vld1q_s32(path+4);
                           vst1q_s32(ret_[4]+ret_num_[4]*8+4, p);
                           ret_num_[4]++;
-                          continue;
 			}
 		      }
                       status_map_[idx6*3] = false;
@@ -248,25 +245,26 @@ public:
     delete[](tail_idxes); delete[](effective_idxes);
   }
 
-  void WriteFile(std::string filename) {
-    FILE *fp = fopen(filename.c_str(), "wb");
+  void WriteFile(const char*  filename) {
+    FILE *fp = fopen(filename, "wb");
     if (fp == NULL) {
       printf("file open error\n");
       exit(1);
     }
-
+    
     fprintf(fp, "%d\n", ret_num_[0]+ret_num_[1]+ret_num_[2]+ret_num_[3]+ret_num_[4]);
-    std::string item;
+
     int bias;
+    std::string item = "";
     for (int d = 3; d <= 7; d++) {
       for (int i = 0; i < ret_num_[d-3]; i++) {
         bias = i*ret_step_[d-3];
         for (int j = 0; j < d-1; j++) {
-          item = ids_comma_[ret_[d-3][bias+j]];
-          fwrite(item.c_str(), item.size(), sizeof(char), fp); 
+	  item = ids_comma_[ret_[d-3][bias+j]];
+	  fwrite(item.c_str(), item.size(), sizeof(char), fp); 
         }
-        item = ids_line_[ret_[d-3][bias+d-1]];
-        fwrite(item.c_str(), item.size(), sizeof(char), fp); 
+	item = ids_line_[ret_[d-3][bias+d-1]];
+	fwrite(item.c_str(), item.size(), sizeof(char), fp); 
       }
     }
     fclose(fp);
@@ -297,14 +295,13 @@ private:
 int main(int argc, char** argv) {
   // DirectedGraph directed_graph("../data/test_data.txt");
   // DirectedGraph directed_graph("../data/HWcode2020-TestData/testData/test_data.txt");
-  // DirectedGraph directed_graph("/data/test_data.txt");
-  DirectedGraph directed_graph("/root/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
+  DirectedGraph directed_graph("/data/test_data.txt");
+  // DirectedGraph directed_graph("/root/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
 
   directed_graph.FindAllCycles();
 
-  directed_graph.WriteFile("go.txt");
-  // directed_graph.WriteFile("/projects/student/result.txt");
-  // exit(0);
+  // directed_graph.WriteFile("go.txt");
+  directed_graph.WriteFile("/projects/student/result.txt");
 
   return 0;
 }

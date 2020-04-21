@@ -1,10 +1,7 @@
 #include <stdio.h>
 #include <string.h>
-#include <arm_neon.h>
 
 #include <queue>
-#include <string>
-#include <vector>
 #include <algorithm>
 #include <unordered_map>
 
@@ -33,23 +30,25 @@ public:
     ids_num_ = std::unique(ids, ids+inputs_size) - ids;
 
     std::unordered_map<int, int> m;
-    ids_comma_ = std::vector<std::string>(ids_num_);
-    ids_line_  = std::vector<std::string>(ids_num_);
+
+    ids_comma_ = new char*[ids_num_];
+    ids_line_  = new char*[ids_num_];
 
     int id;
+    
     for (int i = 0; i < ids_num_; i++) {
       id = ids[i];
-      ids_comma_[i] = std::to_string(id) + ',';
-      ids_line_[i]  = std::to_string(id) + '\n';
-      m[id] = i;
+      ids_comma_[i] = new char[16]; sprintf(ids_comma_[i], "%d,",  id);
+      ids_line_[i]  = new char[16]; sprintf(ids_line_[i],  "%d\n", id);
+      m[id] = i; 
     }
 
     delete[](ids);
 
     G_     = new int[ids_num_*50];
     inv_G_ = new int[ids_num_*50];
-    in_degrees_  = new int[ids_num_]; memset(in_degrees_,  0, ids_num_*sizeof(int));
-    out_degrees_ = new int[ids_num_]; memset(out_degrees_, 0, ids_num_*sizeof(int));
+    in_degrees_  = new int[ids_num_]();
+    out_degrees_ = new int[ids_num_]();
 
     int send_idx = -1; int recv_idx = -1;
     for (int i = 0; i < inputs_size; i+=2) {
@@ -79,9 +78,6 @@ public:
         if (0 == --tmp1[v]) q.push(v);
       }
     }
-    for (int i = 0; i < ids_num_; i++) {
-      if (tmp1[i] == 0) out_degrees_[i] = 0;
-    }
 
     for (int i = 0; i < ids_num_; i++)
       if (0 == tmp2[i]) q.push(i);
@@ -93,9 +89,10 @@ public:
         if (0 == --tmp2[v]) q.push(v);
       }
     }
+
     for (int i = 0; i < ids_num_; i++) {
-      if (tmp2[i] == 0) out_degrees_[i] = 0;
-      std::sort(G_+i*50, G_+i*50+out_degrees_[i]);
+      if (tmp1[i] == 0 || tmp2[i] == 0) out_degrees_[i] = 0;
+      else std::sort(G_+i*50, G_+i*50+out_degrees_[i]);
     }
 
     delete[](tmp1); delete[](tmp2);
@@ -107,24 +104,30 @@ public:
     delete[](G_);
     delete[](inv_G_);
     delete[](status_map_);
+    for (int i = 0; i < ids_num_; i++) {
+      delete[](ids_comma_[i]); delete[](ids_line_[i]);
+    }
+    delete[](ids_comma_); delete[](ids_line_);
   }
 
   void FindAllCycles() {
-    int32x4_t p;
-
-    status_map_ = new bool[ids_num_*3]; memset(status_map_, false, ids_num_*3*sizeof(bool));
+    status_map_ = new bool[ids_num_*3]();
 
     int idx1, idx2, idx3, idx4, idx5, idx6, idx7;
 
-    int* tail_idxes = new int[50]; int tail_idxes_size = 0;
+    int tail_idxes[50]; int tail_idxes_size = 0;
     int* effective_idxes = new int[125000]; int effective_idxes_size = 0;
 
-    int bias;
-    int path[8];
+    char* s3 = ret_[0];
+    char* s4 = ret_[1];
+    char* s5 = ret_[2];
+    char* s6 = ret_[3];
+    char* s7 = ret_[4];
+    int s;
+
     for (idx1 = 0; idx1 < ids_num_; idx1++) {
       if (out_degrees_[idx1] == 0) continue;
       if (G_[idx1*50+out_degrees_[idx1]-1] < idx1) continue;
-      path[0] = idx1;
 
       for (int i = 0; i < in_degrees_[idx1]; i++) {
         idx2 = inv_G_[idx1*50+i];
@@ -150,74 +153,77 @@ public:
         idx2 = G_[idx1*50+i];
         if (idx2 < idx1 || out_degrees_[idx2] == 0) continue;
         if (G_[idx2*50+out_degrees_[idx2]-1] < idx1) continue;
-        path[1] = idx2;
         status_map_[idx2*3] = true;
 
         for (int j = 0; j < out_degrees_[idx2]; j++) {
           idx3 = G_[idx2*50+j];
           if (idx3 <= idx1) continue;
-          path[2] = idx3;
           status_map_[idx3*3] = true;
 
 	  if (status_map_[idx3*3+2] == true) {
-            p = vld1q_s32(path);
-            vst1q_s32(ret_[0]+ret_num_[0]*4, p);
-            ret_num_[0]++;
+            strcpy(s3, ids_comma_[idx1]); s = strlen(ids_comma_[idx1]); ret_num_[0] += s; s3 += s;
+            strcpy(s3, ids_comma_[idx2]); s = strlen(ids_comma_[idx2]); ret_num_[0] += s; s3 += s;
+            strcpy(s3, ids_line_[idx3]);  s = strlen(ids_line_[idx3]);  ret_num_[0] += s; s3 += s;
+	    path_num_++;
 	  }
 
           for (int k = 0; k < out_degrees_[idx3]; k++) {
             idx4 = G_[idx3*50+k];
 
             if (idx4 > idx1 && status_map_[idx4*3] == false) {
-              path[3] = idx4;
               status_map_[idx4*3] = true;
 
 	      if (status_map_[idx4*3+2] == true) {
-                p = vld1q_s32(path);
-                vst1q_s32(ret_[1]+ret_num_[1]*4, p);
-                ret_num_[1]++;
+                strcpy(s4, ids_comma_[idx1]); s = strlen(ids_comma_[idx1]); ret_num_[1] += s; s4 += s;
+                strcpy(s4, ids_comma_[idx2]); s = strlen(ids_comma_[idx2]); ret_num_[1] += s; s4 += s;
+                strcpy(s4, ids_comma_[idx3]); s = strlen(ids_comma_[idx3]); ret_num_[1] += s; s4 += s;
+                strcpy(s4, ids_line_[idx4]);  s = strlen(ids_line_[idx4]);  ret_num_[1] += s; s4 += s;
+	        path_num_++;
 	      }
 
               for (int l = 0; l < out_degrees_[idx4]; l++) {
                 idx5 = G_[idx4*50+l];
 
                 if (status_map_[idx5*3] == false && status_map_[idx5*3+1] == true) {
-                  path[4] = idx5;
                   status_map_[idx5*3] = true;
 
 	          if (status_map_[idx5*3+2] == true) {
-                    p = vld1q_s32(path);
-                    vst1q_s32(ret_[2]+ret_num_[2]*8, p);
-                    p = vld1q_s32(path+4);
-                    vst1q_s32(ret_[2]+ret_num_[2]*8+4, p);
-                    ret_num_[2]++;
+                    strcpy(s5, ids_comma_[idx1]); s = strlen(ids_comma_[idx1]); ret_num_[2] += s; s5 += s;
+                    strcpy(s5, ids_comma_[idx2]); s = strlen(ids_comma_[idx2]); ret_num_[2] += s; s5 += s;
+                    strcpy(s5, ids_comma_[idx3]); s = strlen(ids_comma_[idx3]); ret_num_[2] += s; s5 += s;
+                    strcpy(s5, ids_comma_[idx4]); s = strlen(ids_comma_[idx4]); ret_num_[2] += s; s5 += s;
+                    strcpy(s5, ids_line_[idx5]);  s = strlen(ids_line_[idx5]);  ret_num_[2] += s; s5 += s;
+	            path_num_++;
 	          }
 
                   for (int m = 0; m < out_degrees_[idx5]; m++) {
                     idx6 = G_[idx5*50+m];
 
 		    if (status_map_[idx6*3] == false && status_map_[idx6*3+1] == true) {
-                      path[5] = idx6;
                       status_map_[idx6*3] = true;
                       
 	              if (status_map_[idx6*3+2] == true) {
-                        p = vld1q_s32(path);
-                        vst1q_s32(ret_[3]+ret_num_[3]*8, p);
-                        p = vld1q_s32(path+4);
-                        vst1q_s32(ret_[3]+ret_num_[3]*8+4, p);
-                        ret_num_[3]++;
+                        strcpy(s6, ids_comma_[idx1]); s = strlen(ids_comma_[idx1]); ret_num_[3] += s; s6 += s;
+                        strcpy(s6, ids_comma_[idx2]); s = strlen(ids_comma_[idx2]); ret_num_[3] += s; s6 += s;
+                        strcpy(s6, ids_comma_[idx3]); s = strlen(ids_comma_[idx3]); ret_num_[3] += s; s6 += s;
+                        strcpy(s6, ids_comma_[idx4]); s = strlen(ids_comma_[idx4]); ret_num_[3] += s; s6 += s;
+                        strcpy(s6, ids_comma_[idx5]); s = strlen(ids_comma_[idx5]); ret_num_[3] += s; s6 += s;
+                        strcpy(s6, ids_line_[idx6]);  s = strlen(ids_line_[idx6]);  ret_num_[3] += s; s6 += s;
+	                path_num_++;
 	              }
 
                       for (int n = 0; n < out_degrees_[idx6]; n++) {
                         idx7 = G_[idx6*50+n];
 
 			if (status_map_[idx7*3] == false && status_map_[idx7*3+1] == true && status_map_[idx7*3+2] == true) {
-                          path[6] = idx7;
-                          p = vld1q_s32(path);
-                          vst1q_s32(ret_[4]+ret_num_[4]*8, p);
-                          p = vld1q_s32(path+4);
-                          vst1q_s32(ret_[4]+ret_num_[4]*8+4, p);
-                          ret_num_[4]++;
+                          strcpy(s7, ids_comma_[idx1]); s = strlen(ids_comma_[idx1]); ret_num_[4] += s; s7 += s;
+                          strcpy(s7, ids_comma_[idx2]); s = strlen(ids_comma_[idx2]); ret_num_[4] += s; s7 += s;
+                          strcpy(s7, ids_comma_[idx3]); s = strlen(ids_comma_[idx3]); ret_num_[4] += s; s7 += s;
+                          strcpy(s7, ids_comma_[idx4]); s = strlen(ids_comma_[idx4]); ret_num_[4] += s; s7 += s;
+                          strcpy(s7, ids_comma_[idx5]); s = strlen(ids_comma_[idx5]); ret_num_[4] += s; s7 += s;
+                          strcpy(s7, ids_comma_[idx6]); s = strlen(ids_comma_[idx6]); ret_num_[4] += s; s7 += s;
+                          strcpy(s7, ids_line_[idx7]);  s = strlen(ids_line_[idx7]);  ret_num_[4] += s; s7 += s;
+	                  path_num_++;
 			}
 		      }
                       status_map_[idx6*3] = false;
@@ -242,7 +248,7 @@ public:
       }
       tail_idxes_size = 0; effective_idxes_size = 0;
     }
-    delete[](tail_idxes); delete[](effective_idxes);
+    delete[](effective_idxes);
   }
 
   void WriteFile(const char*  filename) {
@@ -252,27 +258,28 @@ public:
       exit(1);
     }
     
-    fprintf(fp, "%d\n", ret_num_[0]+ret_num_[1]+ret_num_[2]+ret_num_[3]+ret_num_[4]);
+    int bias = 0;
+    char buf[15];
+    const int block_size = 1024*1024;
+    
+    sprintf(buf, "%d\n", path_num_);
+    fwrite(buf, strlen(buf), sizeof(char), fp);
 
-    int bias;
-    std::string item = "";
-    for (int d = 3; d <= 7; d++) {
-      for (int i = 0; i < ret_num_[d-3]; i++) {
-        bias = i*ret_step_[d-3];
-        for (int j = 0; j < d-1; j++) {
-	  item = ids_comma_[ret_[d-3][bias+j]];
-	  fwrite(item.c_str(), item.size(), sizeof(char), fp); 
-        }
-	item = ids_line_[ret_[d-3][bias+d-1]];
-	fwrite(item.c_str(), item.size(), sizeof(char), fp); 
+    for (int i = 0; i < 5; i++) {
+      while (ret_num_[i] >= block_size) {
+        fwrite(ret_[i]+bias, block_size, sizeof(char), fp);
+        ret_num_[i] -= block_size;
+        bias += block_size;
       }
+      fwrite(ret_[i]+bias, strlen(ret_[i]+bias), sizeof(char), fp);
+      bias = 0;
     }
     fclose(fp);
   }
 
 private:
-  std::vector<std::string> ids_comma_;
-  std::vector<std::string> ids_line_;
+  char** ids_comma_;
+  char** ids_line_;
 
   int ids_num_;
 
@@ -281,22 +288,24 @@ private:
   bool* status_map_;
   int* in_degrees_;
   int* out_degrees_;
-  int* ret3_ = new int[4*500000]; 
-  int* ret4_ = new int[4*500000]; 
-  int* ret5_ = new int[8*1000000];
-  int* ret6_ = new int[8*2000000];
-  int* ret7_ = new int[8*3000000];
-  int* ret_[5] = {ret3_, ret4_, ret5_, ret6_, ret7_};
+  char* ret3_ = new char[40*500000]; 
+  char* ret4_ = new char[50*500000]; 
+  char* ret5_ = new char[60*1000000];
+  char* ret6_ = new char[70*2000000];
+  char* ret7_ = new char[80*3000000];
+  char* ret_[5] = {ret3_, ret4_, ret5_, ret6_, ret7_};
   int ret_num_[5] = {0, 0, 0, 0, 0}; 
-  int ret_step_[5] = {4, 4, 8, 8, 8}; 
+  int ret_step_[5] = {4, 4, 8, 8, 8};
+  int path_num_; 
 };
 
 
 int main(int argc, char** argv) {
   // DirectedGraph directed_graph("../data/test_data.txt");
   // DirectedGraph directed_graph("../data/HWcode2020-TestData/testData/test_data.txt");
-  DirectedGraph directed_graph("/data/test_data.txt");
   // DirectedGraph directed_graph("/root/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
+  // DirectedGraph directed_graph("b.txt");
+  DirectedGraph directed_graph("/data/test_data.txt");
 
   directed_graph.FindAllCycles();
 

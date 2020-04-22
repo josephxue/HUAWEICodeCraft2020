@@ -71,12 +71,14 @@ public:
 
     ids_comma_ = new char [ids_num_*16];
     ids_line_  = new char [ids_num_*16];
+    sl_= new int [ids_num_];
 
-    int id;
+    int id, t;
     for (int i = 0; i < ids_num_; i++) {
       id = ids[i];
-      sprintf(ids_comma_+i*16, "%d,",  id);
+      t = sprintf(ids_comma_+i*16, "%d,",  id);
       sprintf(ids_line_+i*16,  "%d\n", id);
+      sl_[i] = t;
       m[id] = i; 
     }
 
@@ -142,7 +144,7 @@ public:
     delete[](G_);
     delete[](inv_G_);
     delete[](status_map_);
-    delete[](ids_comma_); delete[](ids_line_);
+    delete[](ids_comma_); delete[](ids_line_); delete[](sl_);
   }
 
   void FindAllCycles() {
@@ -196,9 +198,9 @@ public:
           status_map_[idx3*3] = true;
 
 	  if (status_map_[idx3*3+2] == true) {
-            strcpy(s3, ids_comma_+idx1*16); s = strlen(ids_comma_+idx1*16); ret_num_[0] += s; s3 += s;
-            strcpy(s3, ids_comma_+idx2*16); s = strlen(ids_comma_+idx2*16); ret_num_[0] += s; s3 += s;
-            strcpy(s3, ids_line_+idx3*16);  s = strlen(ids_line_+idx3*16);  ret_num_[0] += s; s3 += s;
+            strcpy(s3, ids_comma_+idx1*16); s = sl_[idx1]; ret_num_[0] += s; s3 += s;
+            strcpy(s3, ids_comma_+idx2*16); s = sl_[idx2]; ret_num_[0] += s; s3 += s;
+            strcpy(s3, ids_line_+idx3*16);  s = sl_[idx3];  ret_num_[0] += s; s3 += s;
 	    path_num_++;
 	  }
 
@@ -209,10 +211,10 @@ public:
               status_map_[idx4*3] = true;
 
 	      if (status_map_[idx4*3+2] == true) {
-                strcpy(s4, ids_comma_+idx1*16); s = strlen(ids_comma_+idx1*16); ret_num_[1] += s; s4 += s;
-                strcpy(s4, ids_comma_+idx2*16); s = strlen(ids_comma_+idx2*16); ret_num_[1] += s; s4 += s;
-                strcpy(s4, ids_comma_+idx3*16); s = strlen(ids_comma_+idx3*16); ret_num_[1] += s; s4 += s;
-                strcpy(s4, ids_line_+idx4*16);  s = strlen(ids_line_+idx4*16);  ret_num_[1] += s; s4 += s;
+                strcpy(s4, ids_comma_+idx1*16); s = sl_[idx1]; ret_num_[1] += s; s4 += s;
+                strcpy(s4, ids_comma_+idx2*16); s = sl_[idx2]; ret_num_[1] += s; s4 += s;
+                strcpy(s4, ids_comma_+idx3*16); s = sl_[idx3]; ret_num_[1] += s; s4 += s;
+                strcpy(s4, ids_line_+idx4*16);  s = sl_[idx4]; ret_num_[1] += s; s4 += s;
 	        path_num_++;
 	      }
 
@@ -223,11 +225,11 @@ public:
                   status_map_[idx5*3] = true;
 
 	          if (status_map_[idx5*3+2] == true) {
-                    strcpy(s5, ids_comma_+idx1*16); s = strlen(ids_comma_+idx1*16); ret_num_[2] += s; s5 += s;
-                    strcpy(s5, ids_comma_+idx2*16); s = strlen(ids_comma_+idx2*16); ret_num_[2] += s; s5 += s;
-                    strcpy(s5, ids_comma_+idx3*16); s = strlen(ids_comma_+idx3*16); ret_num_[2] += s; s5 += s;
-                    strcpy(s5, ids_comma_+idx4*16); s = strlen(ids_comma_+idx4*16); ret_num_[2] += s; s5 += s;
-                    strcpy(s5, ids_line_+idx5*16);  s = strlen(ids_line_+idx5*16);  ret_num_[2] += s; s5 += s;
+                    strcpy(s5, ids_comma_+idx1*16); s = sl_[idx1]; ret_num_[2] += s; s5 += s;
+                    strcpy(s5, ids_comma_+idx2*16); s = sl_[idx2]; ret_num_[2] += s; s5 += s;
+                    strcpy(s5, ids_comma_+idx3*16); s = sl_[idx3]; ret_num_[2] += s; s5 += s;
+                    strcpy(s5, ids_comma_+idx4*16); s = sl_[idx4]; ret_num_[2] += s; s5 += s;
+                    strcpy(s5, ids_line_+idx5*16);  s = sl_[idx5]; ret_num_[2] += s; s5 += s;
 	            path_num_++;
 	          }
 
@@ -238,12 +240,12 @@ public:
                       status_map_[idx6*3] = true;
                       
 	              if (status_map_[idx6*3+2] == true) {
-                        strcpy(s6, ids_comma_+idx1*16); s = strlen(ids_comma_+idx1*16); ret_num_[3] += s; s6 += s;
-                        strcpy(s6, ids_comma_+idx2*16); s = strlen(ids_comma_+idx2*16); ret_num_[3] += s; s6 += s;
-                        strcpy(s6, ids_comma_+idx3*16); s = strlen(ids_comma_+idx3*16); ret_num_[3] += s; s6 += s;
-                        strcpy(s6, ids_comma_+idx4*16); s = strlen(ids_comma_+idx4*16); ret_num_[3] += s; s6 += s;
-                        strcpy(s6, ids_comma_+idx5*16); s = strlen(ids_comma_+idx5*16); ret_num_[3] += s; s6 += s;
-                        strcpy(s6, ids_line_+idx6*16);  s = strlen(ids_line_+idx6*16);  ret_num_[3] += s; s6 += s;
+                        strcpy(s6, ids_comma_+idx1*16); s = sl_[idx1]; ret_num_[3] += s; s6 += s;
+                        strcpy(s6, ids_comma_+idx2*16); s = sl_[idx2]; ret_num_[3] += s; s6 += s;
+                        strcpy(s6, ids_comma_+idx3*16); s = sl_[idx3]; ret_num_[3] += s; s6 += s;
+                        strcpy(s6, ids_comma_+idx4*16); s = sl_[idx4]; ret_num_[3] += s; s6 += s;
+                        strcpy(s6, ids_comma_+idx5*16); s = sl_[idx5]; ret_num_[3] += s; s6 += s;
+                        strcpy(s6, ids_line_+idx6*16);  s = sl_[idx6]; ret_num_[3] += s; s6 += s;
 	                path_num_++;
 	              }
 
@@ -251,13 +253,13 @@ public:
                         idx7 = G_[idx6*50+n];
 
 			if (status_map_[idx7*3] == false && status_map_[idx7*3+1] == true && status_map_[idx7*3+2] == true) {
-                          strcpy(s7, ids_comma_+idx1*16); s = strlen(ids_comma_+idx1*16); ret_num_[4] += s; s7 += s;
-                          strcpy(s7, ids_comma_+idx2*16); s = strlen(ids_comma_+idx2*16); ret_num_[4] += s; s7 += s;
-                          strcpy(s7, ids_comma_+idx3*16); s = strlen(ids_comma_+idx3*16); ret_num_[4] += s; s7 += s;
-                          strcpy(s7, ids_comma_+idx4*16); s = strlen(ids_comma_+idx4*16); ret_num_[4] += s; s7 += s;
-                          strcpy(s7, ids_comma_+idx5*16); s = strlen(ids_comma_+idx5*16); ret_num_[4] += s; s7 += s;
-                          strcpy(s7, ids_comma_+idx6*16); s = strlen(ids_comma_+idx6*16); ret_num_[4] += s; s7 += s;
-                          strcpy(s7, ids_line_+idx7*16);  s = strlen(ids_line_+idx7*16);  ret_num_[4] += s; s7 += s;
+                          strcpy(s7, ids_comma_+idx1*16); s = sl_[idx1]; ret_num_[4] += s; s7 += s;
+                          strcpy(s7, ids_comma_+idx2*16); s = sl_[idx2]; ret_num_[4] += s; s7 += s;
+                          strcpy(s7, ids_comma_+idx3*16); s = sl_[idx3]; ret_num_[4] += s; s7 += s;
+                          strcpy(s7, ids_comma_+idx4*16); s = sl_[idx4]; ret_num_[4] += s; s7 += s;
+                          strcpy(s7, ids_comma_+idx5*16); s = sl_[idx5]; ret_num_[4] += s; s7 += s;
+                          strcpy(s7, ids_comma_+idx6*16); s = sl_[idx6]; ret_num_[4] += s; s7 += s;
+                          strcpy(s7, ids_line_+idx7*16);  s = sl_[idx7]; ret_num_[4] += s; s7 += s;
 	                  path_num_++;
 			}
 		      }
@@ -315,6 +317,7 @@ public:
 private:
   char* ids_comma_;
   char* ids_line_;
+  int* sl_;
 
   int ids_num_;
 
@@ -338,14 +341,14 @@ private:
 int main(int argc, char** argv) {
   // DirectedGraph directed_graph("../data/test_data.txt");
   // DirectedGraph directed_graph("../data/HWcode2020-TestData/testData/test_data.txt");
-  DirectedGraph directed_graph("/root/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
+  // DirectedGraph directed_graph("/root/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
   // DirectedGraph directed_graph("b.txt");
-  // DirectedGraph directed_graph("/data/test_data.txt");
+  DirectedGraph directed_graph("/data/test_data.txt");
 
   directed_graph.FindAllCycles();
 
-  directed_graph.WriteFile("go.txt");
-  // directed_graph.WriteFile("/projects/student/result.txt");
+  // directed_graph.WriteFile("go.txt");
+  directed_graph.WriteFile("/projects/student/result.txt");
 
   return 0;
 }

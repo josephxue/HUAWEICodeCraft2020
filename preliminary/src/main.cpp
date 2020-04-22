@@ -1,5 +1,10 @@
 #include <stdio.h>
+#include <unistd.h>
 #include <string.h>
+#include <sys/types.h>    
+#include <sys/stat.h>   
+#include <sys/mman.h>
+#include <fcntl.h>
 
 #include <queue>
 #include <algorithm>
@@ -9,20 +14,50 @@
 class DirectedGraph {
 public:
   DirectedGraph(const char* filename) {
-    FILE *fp = fopen(filename, "r");
-    if (fp == NULL) {
+    int fd = open(filename, O_RDONLY);
+    if (fd == -1) {
       printf("file open error\n");
       exit(1);
     }
 
-    int* inputs = new int[560000]; int inputs_size = 0;
-    int send_id, recv_id, val;
-    while (fscanf(fp, "%d,%d,%d", &send_id, &recv_id, &val) > 0) {
-      inputs[inputs_size]   = send_id;
-      inputs[inputs_size+1] = recv_id;
-      inputs_size += 2;
+    struct stat st;
+    int r = fstat(fd, &st);
+    if (r == -1) {
+      printf("get file stat error\n");
+      close(fd);
+      exit(-1);
     }
-    fclose(fp);
+    int filesize = st.st_size;
+    
+    void* p;
+    char* start; char* current;
+    char  buf[16];
+
+    p = mmap(NULL, filesize, PROT_READ, MAP_SHARED, fd, 0);
+    if (p == NULL || p == (void*)(-1)) {
+      printf("mmap error\n");
+      close(fd);
+      exit(-1);
+    }
+    
+    start = (char*)p; current = (char*)p; 
+    int s;
+    int* inputs = new int[560000]; int inputs_size = 0;
+    int split = 0;
+    for (int i = 0; i < filesize; i++, current++) {
+      if (*current == '\n' || *current == ',') {
+	if (++split % 3 != 0) {
+          s = current - start;
+	  memcpy(buf, start, s);
+	  buf[s] = '\0';
+          inputs[inputs_size++] = atoi(buf);
+	}
+	start = current+1;
+      }
+    }
+
+    munmap(p, filesize);
+    close(fd);
 
     int* ids = new int[inputs_size];
     memcpy(ids, inputs, inputs_size*sizeof(int));
@@ -288,11 +323,11 @@ private:
   bool* status_map_;
   int* in_degrees_;
   int* out_degrees_;
-  char* ret3_ = new char[40*500000]; 
-  char* ret4_ = new char[50*500000]; 
-  char* ret5_ = new char[60*1000000];
-  char* ret6_ = new char[70*2000000];
-  char* ret7_ = new char[80*3000000];
+  char* ret3_ = new char[33*500000+10]; 
+  char* ret4_ = new char[44*500000+10]; 
+  char* ret5_ = new char[55*1000000+10];
+  char* ret6_ = new char[66*2000000+10];
+  char* ret7_ = new char[77*3000000+10];
   char* ret_[5] = {ret3_, ret4_, ret5_, ret6_, ret7_};
   int ret_num_[5] = {0, 0, 0, 0, 0}; 
   int ret_step_[5] = {4, 4, 8, 8, 8};

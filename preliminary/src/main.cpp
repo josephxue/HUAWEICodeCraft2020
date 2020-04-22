@@ -66,15 +66,14 @@ public:
 
     std::unordered_map<int, int> m;
 
-    ids_comma_ = new char*[ids_num_];
-    ids_line_  = new char*[ids_num_];
+    ids_comma_ = new char [ids_num_*16];
+    ids_line_  = new char [ids_num_*16];
 
     int id;
-    
     for (int i = 0; i < ids_num_; i++) {
       id = ids[i];
-      ids_comma_[i] = new char[16]; sprintf(ids_comma_[i], "%d,",  id);
-      ids_line_[i]  = new char[16]; sprintf(ids_line_[i],  "%d\n", id);
+      sprintf(ids_comma_+i*16, "%d,",  id);
+      sprintf(ids_line_+i*16,  "%d\n", id);
       m[id] = i; 
     }
 
@@ -97,40 +96,41 @@ public:
     delete[](inputs);
 
     // topo sort
-    int* tmp1 = new int[ids_num_]; memcpy(tmp1,  in_degrees_, ids_num_*sizeof(int));
-    int* tmp2 = new int[ids_num_]; memcpy(tmp2, out_degrees_, ids_num_*sizeof(int));
-
     std::queue<int> q;
     int u, v;
 
     for (int i = 0; i < ids_num_; i++)
-      if (0 == tmp1[i]) q.push(i);
+      if (0 == in_degrees_[i]) q.push(i);
     while (!q.empty()) {
       u = q.front();
       q.pop();
       for (int i = 0; i < out_degrees_[u]; i++) {
         v = G_[u*50+i];
-        if (0 == --tmp1[v]) q.push(v);
+	for (int j = 0; j < in_degrees_[v]; j++) {
+	  if (inv_G_[v*50+j] == u) inv_G_[v*50+j] = inv_G_[v*50+in_degrees_[v]-1];
+	}
+        if (0 == --in_degrees_[v]) q.push(v);
       }
     }
 
     for (int i = 0; i < ids_num_; i++)
-      if (0 == tmp2[i]) q.push(i);
+      if (0 == out_degrees_[i]) q.push(i);
     while (!q.empty()) {
       u = q.front();
       q.pop();
       for (int i = 0; i < in_degrees_[u]; i++) {
         v = inv_G_[u*50+i];
-        if (0 == --tmp2[v]) q.push(v);
+	for (int j = 0; j < out_degrees_[v]; j++) {
+	  if (G_[v*50+j] == u) G_[v*50+j] = G_[v*50+out_degrees_[v]-1];
+	}
+        if (0 == --out_degrees_[v]) q.push(v);
       }
     }
 
     for (int i = 0; i < ids_num_; i++) {
-      if (tmp1[i] == 0 || tmp2[i] == 0) out_degrees_[i] = 0;
-      else std::sort(G_+i*50, G_+i*50+out_degrees_[i]);
+      if (in_degrees_[i] == 0) out_degrees_[i] = 0;
+      if (out_degrees_[i] != 0) std::sort(G_+i*50, G_+i*50+out_degrees_[i]);
     }
-
-    delete[](tmp1); delete[](tmp2);
   }
 
   ~DirectedGraph() {
@@ -139,9 +139,6 @@ public:
     delete[](G_);
     delete[](inv_G_);
     delete[](status_map_);
-    for (int i = 0; i < ids_num_; i++) {
-      delete[](ids_comma_[i]); delete[](ids_line_[i]);
-    }
     delete[](ids_comma_); delete[](ids_line_);
   }
 
@@ -196,9 +193,9 @@ public:
           status_map_[idx3*3] = true;
 
 	  if (status_map_[idx3*3+2] == true) {
-            strcpy(s3, ids_comma_[idx1]); s = strlen(ids_comma_[idx1]); ret_num_[0] += s; s3 += s;
-            strcpy(s3, ids_comma_[idx2]); s = strlen(ids_comma_[idx2]); ret_num_[0] += s; s3 += s;
-            strcpy(s3, ids_line_[idx3]);  s = strlen(ids_line_[idx3]);  ret_num_[0] += s; s3 += s;
+            strcpy(s3, ids_comma_+idx1*16); s = strlen(ids_comma_+idx1*16); ret_num_[0] += s; s3 += s;
+            strcpy(s3, ids_comma_+idx2*16); s = strlen(ids_comma_+idx2*16); ret_num_[0] += s; s3 += s;
+            strcpy(s3, ids_line_+idx3*16);  s = strlen(ids_line_+idx3*16);  ret_num_[0] += s; s3 += s;
 	    path_num_++;
 	  }
 
@@ -209,10 +206,10 @@ public:
               status_map_[idx4*3] = true;
 
 	      if (status_map_[idx4*3+2] == true) {
-                strcpy(s4, ids_comma_[idx1]); s = strlen(ids_comma_[idx1]); ret_num_[1] += s; s4 += s;
-                strcpy(s4, ids_comma_[idx2]); s = strlen(ids_comma_[idx2]); ret_num_[1] += s; s4 += s;
-                strcpy(s4, ids_comma_[idx3]); s = strlen(ids_comma_[idx3]); ret_num_[1] += s; s4 += s;
-                strcpy(s4, ids_line_[idx4]);  s = strlen(ids_line_[idx4]);  ret_num_[1] += s; s4 += s;
+                strcpy(s4, ids_comma_+idx1*16); s = strlen(ids_comma_+idx1*16); ret_num_[1] += s; s4 += s;
+                strcpy(s4, ids_comma_+idx2*16); s = strlen(ids_comma_+idx2*16); ret_num_[1] += s; s4 += s;
+                strcpy(s4, ids_comma_+idx3*16); s = strlen(ids_comma_+idx3*16); ret_num_[1] += s; s4 += s;
+                strcpy(s4, ids_line_+idx4*16);  s = strlen(ids_line_+idx4*16);  ret_num_[1] += s; s4 += s;
 	        path_num_++;
 	      }
 
@@ -223,11 +220,11 @@ public:
                   status_map_[idx5*3] = true;
 
 	          if (status_map_[idx5*3+2] == true) {
-                    strcpy(s5, ids_comma_[idx1]); s = strlen(ids_comma_[idx1]); ret_num_[2] += s; s5 += s;
-                    strcpy(s5, ids_comma_[idx2]); s = strlen(ids_comma_[idx2]); ret_num_[2] += s; s5 += s;
-                    strcpy(s5, ids_comma_[idx3]); s = strlen(ids_comma_[idx3]); ret_num_[2] += s; s5 += s;
-                    strcpy(s5, ids_comma_[idx4]); s = strlen(ids_comma_[idx4]); ret_num_[2] += s; s5 += s;
-                    strcpy(s5, ids_line_[idx5]);  s = strlen(ids_line_[idx5]);  ret_num_[2] += s; s5 += s;
+                    strcpy(s5, ids_comma_+idx1*16); s = strlen(ids_comma_+idx1*16); ret_num_[2] += s; s5 += s;
+                    strcpy(s5, ids_comma_+idx2*16); s = strlen(ids_comma_+idx2*16); ret_num_[2] += s; s5 += s;
+                    strcpy(s5, ids_comma_+idx3*16); s = strlen(ids_comma_+idx3*16); ret_num_[2] += s; s5 += s;
+                    strcpy(s5, ids_comma_+idx4*16); s = strlen(ids_comma_+idx4*16); ret_num_[2] += s; s5 += s;
+                    strcpy(s5, ids_line_+idx5*16);  s = strlen(ids_line_+idx5*16);  ret_num_[2] += s; s5 += s;
 	            path_num_++;
 	          }
 
@@ -238,12 +235,12 @@ public:
                       status_map_[idx6*3] = true;
                       
 	              if (status_map_[idx6*3+2] == true) {
-                        strcpy(s6, ids_comma_[idx1]); s = strlen(ids_comma_[idx1]); ret_num_[3] += s; s6 += s;
-                        strcpy(s6, ids_comma_[idx2]); s = strlen(ids_comma_[idx2]); ret_num_[3] += s; s6 += s;
-                        strcpy(s6, ids_comma_[idx3]); s = strlen(ids_comma_[idx3]); ret_num_[3] += s; s6 += s;
-                        strcpy(s6, ids_comma_[idx4]); s = strlen(ids_comma_[idx4]); ret_num_[3] += s; s6 += s;
-                        strcpy(s6, ids_comma_[idx5]); s = strlen(ids_comma_[idx5]); ret_num_[3] += s; s6 += s;
-                        strcpy(s6, ids_line_[idx6]);  s = strlen(ids_line_[idx6]);  ret_num_[3] += s; s6 += s;
+                        strcpy(s6, ids_comma_+idx1*16); s = strlen(ids_comma_+idx1*16); ret_num_[3] += s; s6 += s;
+                        strcpy(s6, ids_comma_+idx2*16); s = strlen(ids_comma_+idx2*16); ret_num_[3] += s; s6 += s;
+                        strcpy(s6, ids_comma_+idx3*16); s = strlen(ids_comma_+idx3*16); ret_num_[3] += s; s6 += s;
+                        strcpy(s6, ids_comma_+idx4*16); s = strlen(ids_comma_+idx4*16); ret_num_[3] += s; s6 += s;
+                        strcpy(s6, ids_comma_+idx5*16); s = strlen(ids_comma_+idx5*16); ret_num_[3] += s; s6 += s;
+                        strcpy(s6, ids_line_+idx6*16);  s = strlen(ids_line_+idx6*16);  ret_num_[3] += s; s6 += s;
 	                path_num_++;
 	              }
 
@@ -251,13 +248,13 @@ public:
                         idx7 = G_[idx6*50+n];
 
 			if (status_map_[idx7*3] == false && status_map_[idx7*3+1] == true && status_map_[idx7*3+2] == true) {
-                          strcpy(s7, ids_comma_[idx1]); s = strlen(ids_comma_[idx1]); ret_num_[4] += s; s7 += s;
-                          strcpy(s7, ids_comma_[idx2]); s = strlen(ids_comma_[idx2]); ret_num_[4] += s; s7 += s;
-                          strcpy(s7, ids_comma_[idx3]); s = strlen(ids_comma_[idx3]); ret_num_[4] += s; s7 += s;
-                          strcpy(s7, ids_comma_[idx4]); s = strlen(ids_comma_[idx4]); ret_num_[4] += s; s7 += s;
-                          strcpy(s7, ids_comma_[idx5]); s = strlen(ids_comma_[idx5]); ret_num_[4] += s; s7 += s;
-                          strcpy(s7, ids_comma_[idx6]); s = strlen(ids_comma_[idx6]); ret_num_[4] += s; s7 += s;
-                          strcpy(s7, ids_line_[idx7]);  s = strlen(ids_line_[idx7]);  ret_num_[4] += s; s7 += s;
+                          strcpy(s7, ids_comma_+idx1*16); s = strlen(ids_comma_+idx1*16); ret_num_[4] += s; s7 += s;
+                          strcpy(s7, ids_comma_+idx2*16); s = strlen(ids_comma_+idx2*16); ret_num_[4] += s; s7 += s;
+                          strcpy(s7, ids_comma_+idx3*16); s = strlen(ids_comma_+idx3*16); ret_num_[4] += s; s7 += s;
+                          strcpy(s7, ids_comma_+idx4*16); s = strlen(ids_comma_+idx4*16); ret_num_[4] += s; s7 += s;
+                          strcpy(s7, ids_comma_+idx5*16); s = strlen(ids_comma_+idx5*16); ret_num_[4] += s; s7 += s;
+                          strcpy(s7, ids_comma_+idx6*16); s = strlen(ids_comma_+idx6*16); ret_num_[4] += s; s7 += s;
+                          strcpy(s7, ids_line_+idx7*16);  s = strlen(ids_line_+idx7*16);  ret_num_[4] += s; s7 += s;
 	                  path_num_++;
 			}
 		      }
@@ -313,8 +310,8 @@ public:
   }
 
 private:
-  char** ids_comma_;
-  char** ids_line_;
+  char* ids_comma_;
+  char* ids_line_;
 
   int ids_num_;
 

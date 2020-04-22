@@ -5,6 +5,7 @@
 #include <sys/stat.h>   
 #include <sys/mman.h>
 #include <fcntl.h>
+#include <arm_neon.h>
 
 #include <queue>
 #include <algorithm>
@@ -30,8 +31,8 @@ public:
     int filesize = st.st_size;
     
     void* p;
-    char* start; char* current;
-    char  buf[16];
+    int8_t* start; int8_t* current;
+    int8_t  buf[16];
 
     p = mmap(NULL, filesize, PROT_READ, MAP_SHARED, fd, 0);
     if (p == NULL || p == (void*)(-1)) {
@@ -40,17 +41,19 @@ public:
       exit(-1);
     }
     
-    start = (char*)p; current = (char*)p; 
+    start = (int8_t*)p; current = (int8_t*)p; 
     int s;
     int* inputs = new int[560000]; int inputs_size = 0;
     int split = 0;
+    int8x16_t tmp;
     for (int i = 0; i < filesize; i++, current++) {
       if (*current == '\n' || *current == ',') {
 	if (++split % 3 != 0) {
           s = current - start;
-	  memcpy(buf, start, s);
+	  tmp = vld1q_s8(start);
+	  vst1q_s8(buf, tmp);
 	  buf[s] = '\0';
-          inputs[inputs_size++] = atoi(buf);
+          inputs[inputs_size++] = atoi((char*)buf);
 	}
 	start = current+1;
       }
@@ -335,14 +338,14 @@ private:
 int main(int argc, char** argv) {
   // DirectedGraph directed_graph("../data/test_data.txt");
   // DirectedGraph directed_graph("../data/HWcode2020-TestData/testData/test_data.txt");
-  // DirectedGraph directed_graph("/root/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
+  DirectedGraph directed_graph("/root/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
   // DirectedGraph directed_graph("b.txt");
-  DirectedGraph directed_graph("/data/test_data.txt");
+  // DirectedGraph directed_graph("/data/test_data.txt");
 
   directed_graph.FindAllCycles();
 
-  // directed_graph.WriteFile("go.txt");
-  directed_graph.WriteFile("/projects/student/result.txt");
+  directed_graph.WriteFile("go.txt");
+  // directed_graph.WriteFile("/projects/student/result.txt");
 
   return 0;
 }

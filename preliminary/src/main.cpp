@@ -162,6 +162,8 @@ public:
     char* s7 = ret_[4];
     int s;
 
+    int8x16_t tmp;
+
     for (idx1 = 0; idx1 < ids_num_; idx1++) {
       if (out_degrees_[idx1] == 0) continue;
       if (G_[idx1*50+out_degrees_[idx1]-1] < idx1) continue;
@@ -198,9 +200,9 @@ public:
           status_map_[idx3*3] = true;
 
 	  if (status_map_[idx3*3+2] == true) {
-            strcpy(s3, ids_comma_+idx1*16); s = sl_[idx1]; ret_num_[0] += s; s3 += s;
-            strcpy(s3, ids_comma_+idx2*16); s = sl_[idx2]; ret_num_[0] += s; s3 += s;
-            strcpy(s3, ids_line_+idx3*16);  s = sl_[idx3];  ret_num_[0] += s; s3 += s;
+            tmp = vld1q_s8((int8_t*)(ids_comma_+idx1*16)); vst1q_s8((int8_t*)s3, tmp); s = sl_[idx1]; ret_num_[0] += s; s3 += s;
+            tmp = vld1q_s8((int8_t*)(ids_comma_+idx2*16)); vst1q_s8((int8_t*)s3, tmp); s = sl_[idx2]; ret_num_[0] += s; s3 += s;
+            tmp = vld1q_s8((int8_t*)(ids_line_+idx3*16));  vst1q_s8((int8_t*)s3, tmp); s = sl_[idx3]; ret_num_[0] += s; s3 += s;
 	    path_num_++;
 	  }
 
@@ -211,10 +213,10 @@ public:
               status_map_[idx4*3] = true;
 
 	      if (status_map_[idx4*3+2] == true) {
-                strcpy(s4, ids_comma_+idx1*16); s = sl_[idx1]; ret_num_[1] += s; s4 += s;
-                strcpy(s4, ids_comma_+idx2*16); s = sl_[idx2]; ret_num_[1] += s; s4 += s;
-                strcpy(s4, ids_comma_+idx3*16); s = sl_[idx3]; ret_num_[1] += s; s4 += s;
-                strcpy(s4, ids_line_+idx4*16);  s = sl_[idx4]; ret_num_[1] += s; s4 += s;
+                tmp = vld1q_s8((int8_t*)(ids_comma_+idx1*16)); vst1q_s8((int8_t*)s4, tmp); s = sl_[idx1]; ret_num_[1] += s; s4 += s;
+                tmp = vld1q_s8((int8_t*)(ids_comma_+idx2*16)); vst1q_s8((int8_t*)s4, tmp); s = sl_[idx2]; ret_num_[1] += s; s4 += s;
+                tmp = vld1q_s8((int8_t*)(ids_comma_+idx3*16)); vst1q_s8((int8_t*)s4, tmp); s = sl_[idx3]; ret_num_[1] += s; s4 += s;
+                tmp = vld1q_s8((int8_t*)(ids_line_+idx4*16));  vst1q_s8((int8_t*)s4, tmp); s = sl_[idx4]; ret_num_[1] += s; s4 += s;
 	        path_num_++;
 	      }
 
@@ -225,11 +227,11 @@ public:
                   status_map_[idx5*3] = true;
 
 	          if (status_map_[idx5*3+2] == true) {
-                    strcpy(s5, ids_comma_+idx1*16); s = sl_[idx1]; ret_num_[2] += s; s5 += s;
-                    strcpy(s5, ids_comma_+idx2*16); s = sl_[idx2]; ret_num_[2] += s; s5 += s;
-                    strcpy(s5, ids_comma_+idx3*16); s = sl_[idx3]; ret_num_[2] += s; s5 += s;
-                    strcpy(s5, ids_comma_+idx4*16); s = sl_[idx4]; ret_num_[2] += s; s5 += s;
-                    strcpy(s5, ids_line_+idx5*16);  s = sl_[idx5]; ret_num_[2] += s; s5 += s;
+                    tmp = vld1q_s8((int8_t*)(ids_comma_+idx1*16)); vst1q_s8((int8_t*)s5, tmp); s = sl_[idx1]; ret_num_[2] += s; s5 += s;
+                    tmp = vld1q_s8((int8_t*)(ids_comma_+idx2*16)); vst1q_s8((int8_t*)s5, tmp); s = sl_[idx2]; ret_num_[2] += s; s5 += s;
+                    tmp = vld1q_s8((int8_t*)(ids_comma_+idx3*16)); vst1q_s8((int8_t*)s5, tmp); s = sl_[idx3]; ret_num_[2] += s; s5 += s;
+                    tmp = vld1q_s8((int8_t*)(ids_comma_+idx4*16)); vst1q_s8((int8_t*)s5, tmp); s = sl_[idx4]; ret_num_[2] += s; s5 += s;
+                    tmp = vld1q_s8((int8_t*)(ids_line_+idx5*16));  vst1q_s8((int8_t*)s5, tmp); s = sl_[idx5]; ret_num_[2] += s; s5 += s;
 	            path_num_++;
 	          }
 
@@ -240,12 +242,12 @@ public:
                       status_map_[idx6*3] = true;
                       
 	              if (status_map_[idx6*3+2] == true) {
-                        strcpy(s6, ids_comma_+idx1*16); s = sl_[idx1]; ret_num_[3] += s; s6 += s;
-                        strcpy(s6, ids_comma_+idx2*16); s = sl_[idx2]; ret_num_[3] += s; s6 += s;
-                        strcpy(s6, ids_comma_+idx3*16); s = sl_[idx3]; ret_num_[3] += s; s6 += s;
-                        strcpy(s6, ids_comma_+idx4*16); s = sl_[idx4]; ret_num_[3] += s; s6 += s;
-                        strcpy(s6, ids_comma_+idx5*16); s = sl_[idx5]; ret_num_[3] += s; s6 += s;
-                        strcpy(s6, ids_line_+idx6*16);  s = sl_[idx6]; ret_num_[3] += s; s6 += s;
+                        tmp = vld1q_s8((int8_t*)(ids_comma_+idx1*16)); vst1q_s8((int8_t*)s6, tmp); s = sl_[idx1]; ret_num_[3] += s; s6 += s;
+                        tmp = vld1q_s8((int8_t*)(ids_comma_+idx2*16)); vst1q_s8((int8_t*)s6, tmp); s = sl_[idx2]; ret_num_[3] += s; s6 += s;
+                        tmp = vld1q_s8((int8_t*)(ids_comma_+idx3*16)); vst1q_s8((int8_t*)s6, tmp); s = sl_[idx3]; ret_num_[3] += s; s6 += s;
+                        tmp = vld1q_s8((int8_t*)(ids_comma_+idx4*16)); vst1q_s8((int8_t*)s6, tmp); s = sl_[idx4]; ret_num_[3] += s; s6 += s;
+                        tmp = vld1q_s8((int8_t*)(ids_comma_+idx5*16)); vst1q_s8((int8_t*)s6, tmp); s = sl_[idx5]; ret_num_[3] += s; s6 += s;
+                        tmp = vld1q_s8((int8_t*)(ids_line_+idx6*16));  vst1q_s8((int8_t*)s6, tmp); s = sl_[idx6]; ret_num_[3] += s; s6 += s;
 	                path_num_++;
 	              }
 
@@ -253,13 +255,13 @@ public:
                         idx7 = G_[idx6*50+n];
 
 			if (status_map_[idx7*3] == false && status_map_[idx7*3+1] == true && status_map_[idx7*3+2] == true) {
-                          strcpy(s7, ids_comma_+idx1*16); s = sl_[idx1]; ret_num_[4] += s; s7 += s;
-                          strcpy(s7, ids_comma_+idx2*16); s = sl_[idx2]; ret_num_[4] += s; s7 += s;
-                          strcpy(s7, ids_comma_+idx3*16); s = sl_[idx3]; ret_num_[4] += s; s7 += s;
-                          strcpy(s7, ids_comma_+idx4*16); s = sl_[idx4]; ret_num_[4] += s; s7 += s;
-                          strcpy(s7, ids_comma_+idx5*16); s = sl_[idx5]; ret_num_[4] += s; s7 += s;
-                          strcpy(s7, ids_comma_+idx6*16); s = sl_[idx6]; ret_num_[4] += s; s7 += s;
-                          strcpy(s7, ids_line_+idx7*16);  s = sl_[idx7]; ret_num_[4] += s; s7 += s;
+                          tmp = vld1q_s8((int8_t*)(ids_comma_+idx1*16)); vst1q_s8((int8_t*)s7, tmp); s = sl_[idx1]; ret_num_[4] += s; s7 += s;
+                          tmp = vld1q_s8((int8_t*)(ids_comma_+idx2*16)); vst1q_s8((int8_t*)s7, tmp); s = sl_[idx2]; ret_num_[4] += s; s7 += s;
+                          tmp = vld1q_s8((int8_t*)(ids_comma_+idx3*16)); vst1q_s8((int8_t*)s7, tmp); s = sl_[idx3]; ret_num_[4] += s; s7 += s;
+                          tmp = vld1q_s8((int8_t*)(ids_comma_+idx4*16)); vst1q_s8((int8_t*)s7, tmp); s = sl_[idx4]; ret_num_[4] += s; s7 += s;
+                          tmp = vld1q_s8((int8_t*)(ids_comma_+idx5*16)); vst1q_s8((int8_t*)s7, tmp); s = sl_[idx5]; ret_num_[4] += s; s7 += s;
+                          tmp = vld1q_s8((int8_t*)(ids_comma_+idx6*16)); vst1q_s8((int8_t*)s7, tmp); s = sl_[idx6]; ret_num_[4] += s; s7 += s;
+                          tmp = vld1q_s8((int8_t*)(ids_line_+idx7*16));  vst1q_s8((int8_t*)s7, tmp); s = sl_[idx7]; ret_num_[4] += s; s7 += s;
 	                  path_num_++;
 			}
 		      }

@@ -263,8 +263,6 @@ public:
                     idx6 = G_[idx5*50+m];
 
 		                if (status_map_[idx6*3] == false && status_map_[idx6*3+1] == true) {
-                      status_map_[idx6*3] = true;
-
 	                    if (status_map_[idx6*3+2] == true) {
                         tmp = vld1q_s8((int8_t*)(ids_comma_+idx1*16)); vst1q_s8((int8_t*)s6, tmp); s = sl_[idx1]; ret_num_[3] += s; s6 += s;
                         tmp = vld1q_s8((int8_t*)(ids_comma_+idx2*16)); vst1q_s8((int8_t*)s6, tmp); s = sl_[idx2]; ret_num_[3] += s; s6 += s;
@@ -289,7 +287,6 @@ public:
 	                        path_num_++;
 			                  }
 		                  }    
-                      status_map_[idx6*3] = false;
 		                }
                   }
                   status_map_[idx5*3] = false;
@@ -365,14 +362,14 @@ private:
 
 
 int main(int argc, char** argv) {
-  // DirectedGraph directed_graph("../data/test_data.txt");
+  DirectedGraph directed_graph("../data/test_data.txt");
   // DirectedGraph directed_graph("/root/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
-  DirectedGraph directed_graph("/data/test_data.txt");
+  // DirectedGraph directed_graph("/data/test_data.txt");
 
   directed_graph.FindAllCycles();
 
-  // directed_graph.WriteFile("go.txt");
-  directed_graph.WriteFile("/projects/student/result.txt");
+  directed_graph.WriteFile("go.txt");
+  // directed_graph.WriteFile("/projects/student/result.txt");
 
   return 0;
 }

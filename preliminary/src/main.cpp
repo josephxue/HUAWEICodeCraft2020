@@ -9,7 +9,6 @@
 
 #include <queue>
 #include <algorithm>
-#include <unordered_map>
 
 
 class DirectedGraph {
@@ -30,44 +29,55 @@ public:
     }
     int filesize = st.st_size;
     
-    void* p;
+    int8_t* p;
     int8_t* start; int8_t* current;
     int8_t  buf[16];
 
-    p = mmap(NULL, filesize, PROT_READ, MAP_SHARED, fd, 0);
+    p = (int8_t*)mmap(NULL, filesize, PROT_READ, MAP_SHARED, fd, 0);
     if (p == NULL || p == (void*)(-1)) {
       printf("mmap error\n");
       close(fd);
       exit(-1);
     }
     
-    start = (int8_t*)p; current = (int8_t*)p; 
+    start = p; current = p; 
     int s;
     int* inputs = new int[560000]; int inputs_size = 0;
     int split = 0;
     int8x16_t tmp;
+    int max_id = -1;
+    int val;
     for (int i = 0; i < filesize; i++, current++) {
       if (*current == '\n' || *current == ',') {
-	if (++split % 3 != 0) {
+	      if (++split % 3 != 0) {
           s = current - start;
-	  tmp = vld1q_s8(start);
-	  vst1q_s8(buf, tmp);
-	  buf[s] = '\0';
-          inputs[inputs_size++] = atoi((char*)buf);
-	}
-	start = current+1;
+	        tmp = vld1q_s8(start);
+	        vst1q_s8(buf, tmp);
+	        buf[s] = '\0';
+	        val = atoi((char*)buf);
+          inputs[inputs_size++] = val;
+	        max_id = val > max_id ? val : max_id;
+	      }
+	      start = current+1;
       }
     }
 
-    munmap(p, filesize);
+    munmap((void*)p, filesize);
     close(fd);
+    
+    int* m = new int[max_id+1]; 
+    int* c = new int[max_id+1]();
+    int* ids = new int[max_id+1];
+    for (int i = 0; i < inputs_size; i++)
+      c[inputs[i]]++;
+    for (int i = 0; i < max_id+1; i++) {
+      if (c[i] > 0) {
+        ids[ids_num_] = i;
+        m[i] = ids_num_++;
+      }
+    }
 
-    int* ids = new int[inputs_size];
-    memcpy(ids, inputs, inputs_size*sizeof(int));
-    std::sort(ids, ids+inputs_size);
-    ids_num_ = std::unique(ids, ids+inputs_size) - ids;
-
-    std::unordered_map<int, int> m;
+    delete[](c);
 
     ids_comma_ = new char [ids_num_*16];
     ids_line_  = new char [ids_num_*16];
@@ -77,7 +87,7 @@ public:
     for (int i = 0; i < ids_num_; i++) {
       id = ids[i];
       t = sprintf(ids_comma_+i*16, "%d,",  id);
-      sprintf(ids_line_+i*16,  "%d\n", id);
+      sprintf(ids_line_+i*16, "%d\n", id);
       sl_[i] = t;
       m[id] = i; 
     }
@@ -98,7 +108,7 @@ public:
       out_degrees_[send_idx]++;
     }
 
-    delete[](inputs);
+    delete[](inputs); delete[](m);
 
     // topo sort
     std::queue<int> q;
@@ -111,9 +121,9 @@ public:
       q.pop();
       for (int i = 0; i < out_degrees_[u]; i++) {
         v = G_[u*50+i];
-	for (int j = 0; j < in_degrees_[v]; j++) {
-	  if (inv_G_[v*50+j] == u) inv_G_[v*50+j] = inv_G_[v*50+in_degrees_[v]-1];
-	}
+	      for (int j = 0; j < in_degrees_[v]; j++) {
+	        if (inv_G_[v*50+j] == u) inv_G_[v*50+j] = inv_G_[v*50+in_degrees_[v]-1];
+	      }
         if (0 == --in_degrees_[v]) q.push(v);
       }
     }
@@ -125,9 +135,9 @@ public:
       q.pop();
       for (int i = 0; i < in_degrees_[u]; i++) {
         v = inv_G_[u*50+i];
-	for (int j = 0; j < out_degrees_[v]; j++) {
-	  if (G_[v*50+j] == u) G_[v*50+j] = G_[v*50+out_degrees_[v]-1];
-	}
+	      for (int j = 0; j < out_degrees_[v]; j++) {
+	        if (G_[v*50+j] == u) G_[v*50+j] = G_[v*50+out_degrees_[v]-1];
+	      }
         if (0 == --out_degrees_[v]) q.push(v);
       }
     }
@@ -172,18 +182,18 @@ public:
         idx2 = inv_G_[idx1*50+i];
         if (idx2 <= idx1) continue;
         status_map_[idx2*3+1] = true; status_map_[idx2*3+2] = true;
-	effective_idxes[effective_idxes_size] = idx2; effective_idxes_size++;
-        tail_idxes[tail_idxes_size] = idx2; tail_idxes_size++; 
+	      effective_idxes[effective_idxes_size++] = idx2;
+        tail_idxes[tail_idxes_size++] = idx2;
 
         for (int j = 0; j < in_degrees_[idx2]; j++) {
           idx3 = inv_G_[idx2*50+j];
           if (idx3 <= idx1) continue;
-          status_map_[idx3*3+1] = true; effective_idxes[effective_idxes_size] = idx3; effective_idxes_size++;
+          status_map_[idx3*3+1] = true; effective_idxes[effective_idxes_size++] = idx3;
 
           for (int k = 0; k < in_degrees_[idx3]; k++) {
             idx4 = inv_G_[idx3*50+k];
             if (idx4 <= idx1) continue;
-            status_map_[idx4*3+1] = true; effective_idxes[effective_idxes_size] = idx4; effective_idxes_size++;
+            status_map_[idx4*3+1] = true; effective_idxes[effective_idxes_size++] = idx4;
           }
         }
       }
@@ -199,12 +209,12 @@ public:
           if (idx3 <= idx1) continue;
           status_map_[idx3*3] = true;
 
-	  if (status_map_[idx3*3+2] == true) {
+	        if (status_map_[idx3*3+2] == true) {
             tmp = vld1q_s8((int8_t*)(ids_comma_+idx1*16)); vst1q_s8((int8_t*)s3, tmp); s = sl_[idx1]; ret_num_[0] += s; s3 += s;
             tmp = vld1q_s8((int8_t*)(ids_comma_+idx2*16)); vst1q_s8((int8_t*)s3, tmp); s = sl_[idx2]; ret_num_[0] += s; s3 += s;
             tmp = vld1q_s8((int8_t*)(ids_line_+idx3*16));  vst1q_s8((int8_t*)s3, tmp); s = sl_[idx3]; ret_num_[0] += s; s3 += s;
-	    path_num_++;
-	  }
+	          path_num_++;
+	        }
 
           for (int k = 0; k < out_degrees_[idx3]; k++) {
             idx4 = G_[idx3*50+k];
@@ -212,13 +222,13 @@ public:
             if (idx4 > idx1 && status_map_[idx4*3] == false) {
               status_map_[idx4*3] = true;
 
-	      if (status_map_[idx4*3+2] == true) {
+	            if (status_map_[idx4*3+2] == true) {
                 tmp = vld1q_s8((int8_t*)(ids_comma_+idx1*16)); vst1q_s8((int8_t*)s4, tmp); s = sl_[idx1]; ret_num_[1] += s; s4 += s;
                 tmp = vld1q_s8((int8_t*)(ids_comma_+idx2*16)); vst1q_s8((int8_t*)s4, tmp); s = sl_[idx2]; ret_num_[1] += s; s4 += s;
                 tmp = vld1q_s8((int8_t*)(ids_comma_+idx3*16)); vst1q_s8((int8_t*)s4, tmp); s = sl_[idx3]; ret_num_[1] += s; s4 += s;
                 tmp = vld1q_s8((int8_t*)(ids_line_+idx4*16));  vst1q_s8((int8_t*)s4, tmp); s = sl_[idx4]; ret_num_[1] += s; s4 += s;
-	        path_num_++;
-	      }
+	              path_num_++;
+	            }
 
               for (int l = 0; l < out_degrees_[idx4]; l++) {
                 idx5 = G_[idx4*50+l];
@@ -226,35 +236,35 @@ public:
                 if (status_map_[idx5*3] == false && status_map_[idx5*3+1] == true) {
                   status_map_[idx5*3] = true;
 
-	          if (status_map_[idx5*3+2] == true) {
+	                if (status_map_[idx5*3+2] == true) {
                     tmp = vld1q_s8((int8_t*)(ids_comma_+idx1*16)); vst1q_s8((int8_t*)s5, tmp); s = sl_[idx1]; ret_num_[2] += s; s5 += s;
                     tmp = vld1q_s8((int8_t*)(ids_comma_+idx2*16)); vst1q_s8((int8_t*)s5, tmp); s = sl_[idx2]; ret_num_[2] += s; s5 += s;
                     tmp = vld1q_s8((int8_t*)(ids_comma_+idx3*16)); vst1q_s8((int8_t*)s5, tmp); s = sl_[idx3]; ret_num_[2] += s; s5 += s;
                     tmp = vld1q_s8((int8_t*)(ids_comma_+idx4*16)); vst1q_s8((int8_t*)s5, tmp); s = sl_[idx4]; ret_num_[2] += s; s5 += s;
                     tmp = vld1q_s8((int8_t*)(ids_line_+idx5*16));  vst1q_s8((int8_t*)s5, tmp); s = sl_[idx5]; ret_num_[2] += s; s5 += s;
-	            path_num_++;
-	          }
+	                  path_num_++;
+	                }
 
                   for (int m = 0; m < out_degrees_[idx5]; m++) {
                     idx6 = G_[idx5*50+m];
 
-		    if (status_map_[idx6*3] == false && status_map_[idx6*3+1] == true) {
+		                if (status_map_[idx6*3] == false && status_map_[idx6*3+1] == true) {
                       status_map_[idx6*3] = true;
-                      
-	              if (status_map_[idx6*3+2] == true) {
+
+	                    if (status_map_[idx6*3+2] == true) {
                         tmp = vld1q_s8((int8_t*)(ids_comma_+idx1*16)); vst1q_s8((int8_t*)s6, tmp); s = sl_[idx1]; ret_num_[3] += s; s6 += s;
                         tmp = vld1q_s8((int8_t*)(ids_comma_+idx2*16)); vst1q_s8((int8_t*)s6, tmp); s = sl_[idx2]; ret_num_[3] += s; s6 += s;
                         tmp = vld1q_s8((int8_t*)(ids_comma_+idx3*16)); vst1q_s8((int8_t*)s6, tmp); s = sl_[idx3]; ret_num_[3] += s; s6 += s;
                         tmp = vld1q_s8((int8_t*)(ids_comma_+idx4*16)); vst1q_s8((int8_t*)s6, tmp); s = sl_[idx4]; ret_num_[3] += s; s6 += s;
                         tmp = vld1q_s8((int8_t*)(ids_comma_+idx5*16)); vst1q_s8((int8_t*)s6, tmp); s = sl_[idx5]; ret_num_[3] += s; s6 += s;
                         tmp = vld1q_s8((int8_t*)(ids_line_+idx6*16));  vst1q_s8((int8_t*)s6, tmp); s = sl_[idx6]; ret_num_[3] += s; s6 += s;
-	                path_num_++;
-	              }
+	                      path_num_++;
+	                    }
 
                       for (int n = 0; n < out_degrees_[idx6]; n++) {
                         idx7 = G_[idx6*50+n];
 
-			if (status_map_[idx7*3] == false && status_map_[idx7*3+1] == true && status_map_[idx7*3+2] == true) {
+			                  if (status_map_[idx7*3] == false && status_map_[idx7*3+1] == true && status_map_[idx7*3+2] == true) {
                           tmp = vld1q_s8((int8_t*)(ids_comma_+idx1*16)); vst1q_s8((int8_t*)s7, tmp); s = sl_[idx1]; ret_num_[4] += s; s7 += s;
                           tmp = vld1q_s8((int8_t*)(ids_comma_+idx2*16)); vst1q_s8((int8_t*)s7, tmp); s = sl_[idx2]; ret_num_[4] += s; s7 += s;
                           tmp = vld1q_s8((int8_t*)(ids_comma_+idx3*16)); vst1q_s8((int8_t*)s7, tmp); s = sl_[idx3]; ret_num_[4] += s; s7 += s;
@@ -262,11 +272,11 @@ public:
                           tmp = vld1q_s8((int8_t*)(ids_comma_+idx5*16)); vst1q_s8((int8_t*)s7, tmp); s = sl_[idx5]; ret_num_[4] += s; s7 += s;
                           tmp = vld1q_s8((int8_t*)(ids_comma_+idx6*16)); vst1q_s8((int8_t*)s7, tmp); s = sl_[idx6]; ret_num_[4] += s; s7 += s;
                           tmp = vld1q_s8((int8_t*)(ids_line_+idx7*16));  vst1q_s8((int8_t*)s7, tmp); s = sl_[idx7]; ret_num_[4] += s; s7 += s;
-	                  path_num_++;
-			}
-		      }
+	                        path_num_++;
+			                  }
+		                  }    
                       status_map_[idx6*3] = false;
-		    }
+		                }
                   }
                   status_map_[idx5*3] = false;
                 }
@@ -290,7 +300,7 @@ public:
     delete[](effective_idxes);
   }
 
-  void WriteFile(const char*  filename) {
+  void WriteFile(const char* filename) {
     FILE *fp = fopen(filename, "wb");
     if (fp == NULL) {
       printf("file open error\n");
@@ -310,7 +320,7 @@ public:
         ret_num_[i] -= block_size;
         bias += block_size;
       }
-      fwrite(ret_[i]+bias, strlen(ret_[i]+bias), sizeof(char), fp);
+      fwrite(ret_[i]+bias, ret_num_[i], sizeof(char), fp);
       bias = 0;
     }
     fclose(fp);
@@ -321,7 +331,7 @@ private:
   char* ids_line_;
   int* sl_;
 
-  int ids_num_;
+  int ids_num_ = 0;
 
   int* G_;
   int* inv_G_;

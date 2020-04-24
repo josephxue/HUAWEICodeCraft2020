@@ -89,7 +89,6 @@ public:
       t = sprintf(ids_comma_+i*16, "%d,",  id);
       sprintf(ids_line_+i*16, "%d\n", id);
       sl_[i] = t;
-      m[id] = i; 
     }
 
     delete[](ids);
@@ -353,14 +352,14 @@ private:
 int main(int argc, char** argv) {
   // DirectedGraph directed_graph("../data/test_data.txt");
   // DirectedGraph directed_graph("../data/HWcode2020-TestData/testData/test_data.txt");
-  // DirectedGraph directed_graph("/root/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
+  DirectedGraph directed_graph("/root/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
   // DirectedGraph directed_graph("b.txt");
-  DirectedGraph directed_graph("/data/test_data.txt");
+  // DirectedGraph directed_graph("/data/test_data.txt");
 
   directed_graph.FindAllCycles();
 
-  // directed_graph.WriteFile("go.txt");
-  directed_graph.WriteFile("/projects/student/result.txt");
+  directed_graph.WriteFile("go.txt");
+  // directed_graph.WriteFile("/projects/student/result.txt");
 
   return 0;
 }

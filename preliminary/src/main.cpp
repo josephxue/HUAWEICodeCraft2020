@@ -79,8 +79,8 @@ public:
 
     delete[](c);
 
-    ids_comma_ = new char [ids_num_*16];
-    ids_line_  = new char [ids_num_*16];
+    ids_comma_ = new char[ids_num_*16];
+    ids_line_  = new char[ids_num_*16];
     sl_= new int [ids_num_];
 
     int id, t;
@@ -141,9 +141,24 @@ public:
       }
     }
 
+    bool is_sorted = false;
+    int tmpsort;
     for (int i = 0; i < ids_num_; i++) {
       if (in_degrees_[i] == 0) out_degrees_[i] = 0;
-      if (out_degrees_[i] != 0) std::sort(G_+i*50, G_+i*50+out_degrees_[i]);
+      if (out_degrees_[i] > 1) {
+        for (int j = 0; j < out_degrees_[i]-1; j++) {
+          is_sorted = true;
+          for (int k = 0; k < out_degrees_[i]-1-j; k++) {
+            if (*(G_+i*50+k) > *(G_+i*50+k+1)) {
+              is_sorted = false;
+              tmpsort = *(G_+i*50+k);
+              *(G_+i*50+k) = *(G_+i*50+k+1);
+              *(G_+i*50+k+1) = tmpsort;
+            }
+          }
+          if(is_sorted) break;
+        }
+      }
     }
   }
 
@@ -345,21 +360,19 @@ private:
   char* ret_[5] = {ret3_, ret4_, ret5_, ret6_, ret7_};
   int ret_num_[5] = {0, 0, 0, 0, 0}; 
   int ret_step_[5] = {4, 4, 8, 8, 8};
-  int path_num_; 
+  int path_num_ = 0; 
 };
 
 
 int main(int argc, char** argv) {
   // DirectedGraph directed_graph("../data/test_data.txt");
-  // DirectedGraph directed_graph("../data/HWcode2020-TestData/testData/test_data.txt");
-  DirectedGraph directed_graph("/root/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
-  // DirectedGraph directed_graph("b.txt");
-  // DirectedGraph directed_graph("/data/test_data.txt");
+  // DirectedGraph directed_graph("/root/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
+  DirectedGraph directed_graph("/data/test_data.txt");
 
   directed_graph.FindAllCycles();
 
-  directed_graph.WriteFile("go.txt");
-  // directed_graph.WriteFile("/projects/student/result.txt");
+  // directed_graph.WriteFile("go.txt");
+  directed_graph.WriteFile("/projects/student/result.txt");
 
   return 0;
 }

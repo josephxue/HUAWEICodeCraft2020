@@ -79,15 +79,15 @@ public:
 
     delete[](c);
 
-    ids_comma_ = new char[ids_num_*16];
-    ids_line_  = new char[ids_num_*16];
-    sl_= new int [ids_num_];
+    ids_comma_ = new int8_t[ids_num_*16];
+    ids_line_  = new int8_t[ids_num_*16];
+    sl_= new int[ids_num_];
 
     int id, t;
     for (int i = 0; i < ids_num_; i++) {
       id = ids[i];
-      t = sprintf(ids_comma_+i*16, "%d,",  id);
-      sprintf(ids_line_+i*16, "%d\n", id);
+      t = sprintf((char*)ids_comma_+i*16, "%d,",  id);
+      sprintf((char*)ids_line_+i*16, "%d\n", id);
       sl_[i] = t;
     }
 
@@ -179,11 +179,11 @@ public:
     int tail_idxes[50]; int tail_idxes_size = 0;
     int* effective_idxes = new int[125000]; int effective_idxes_size = 0;
 
-    char* s3 = ret_[0];
-    char* s4 = ret_[1];
-    char* s5 = ret_[2];
-    char* s6 = ret_[3];
-    char* s7 = ret_[4];
+    int8_t* s3 = ret_[0];
+    int8_t* s4 = ret_[1];
+    int8_t* s5 = ret_[2];
+    int8_t* s6 = ret_[3];
+    int8_t* s7 = ret_[4];
     int s;
 
     int8x16_t tmp;
@@ -224,9 +224,9 @@ public:
           status_map_[idx3*3] = true;
 
 	        if (status_map_[idx3*3+2] == true) {
-            tmp = vld1q_s8((int8_t*)(ids_comma_+idx1*16)); vst1q_s8((int8_t*)s3, tmp); s = sl_[idx1]; ret_num_[0] += s; s3 += s;
-            tmp = vld1q_s8((int8_t*)(ids_comma_+idx2*16)); vst1q_s8((int8_t*)s3, tmp); s = sl_[idx2]; ret_num_[0] += s; s3 += s;
-            tmp = vld1q_s8((int8_t*)(ids_line_+idx3*16));  vst1q_s8((int8_t*)s3, tmp); s = sl_[idx3]; ret_num_[0] += s; s3 += s;
+            tmp = vld1q_s8(ids_comma_+idx1*16); vst1q_s8(s3, tmp); s = sl_[idx1]; ret_num_[0] += s; s3 += s;
+            tmp = vld1q_s8(ids_comma_+idx2*16); vst1q_s8(s3, tmp); s = sl_[idx2]; ret_num_[0] += s; s3 += s;
+            tmp = vld1q_s8(ids_line_+idx3*16);  vst1q_s8(s3, tmp); s = sl_[idx3]; ret_num_[0] += s; s3 += s;
 	          path_num_++;
 	        }
 
@@ -237,10 +237,10 @@ public:
               status_map_[idx4*3] = true;
 
 	            if (status_map_[idx4*3+2] == true) {
-                tmp = vld1q_s8((int8_t*)(ids_comma_+idx1*16)); vst1q_s8((int8_t*)s4, tmp); s = sl_[idx1]; ret_num_[1] += s; s4 += s;
-                tmp = vld1q_s8((int8_t*)(ids_comma_+idx2*16)); vst1q_s8((int8_t*)s4, tmp); s = sl_[idx2]; ret_num_[1] += s; s4 += s;
-                tmp = vld1q_s8((int8_t*)(ids_comma_+idx3*16)); vst1q_s8((int8_t*)s4, tmp); s = sl_[idx3]; ret_num_[1] += s; s4 += s;
-                tmp = vld1q_s8((int8_t*)(ids_line_+idx4*16));  vst1q_s8((int8_t*)s4, tmp); s = sl_[idx4]; ret_num_[1] += s; s4 += s;
+                tmp = vld1q_s8(ids_comma_+idx1*16); vst1q_s8(s4, tmp); s = sl_[idx1]; ret_num_[1] += s; s4 += s;
+                tmp = vld1q_s8(ids_comma_+idx2*16); vst1q_s8(s4, tmp); s = sl_[idx2]; ret_num_[1] += s; s4 += s;
+                tmp = vld1q_s8(ids_comma_+idx3*16); vst1q_s8(s4, tmp); s = sl_[idx3]; ret_num_[1] += s; s4 += s;
+                tmp = vld1q_s8(ids_line_+idx4*16);  vst1q_s8(s4, tmp); s = sl_[idx4]; ret_num_[1] += s; s4 += s;
 	              path_num_++;
 	            }
 
@@ -251,11 +251,11 @@ public:
                   status_map_[idx5*3] = true;
 
 	                if (status_map_[idx5*3+2] == true) {
-                    tmp = vld1q_s8((int8_t*)(ids_comma_+idx1*16)); vst1q_s8((int8_t*)s5, tmp); s = sl_[idx1]; ret_num_[2] += s; s5 += s;
-                    tmp = vld1q_s8((int8_t*)(ids_comma_+idx2*16)); vst1q_s8((int8_t*)s5, tmp); s = sl_[idx2]; ret_num_[2] += s; s5 += s;
-                    tmp = vld1q_s8((int8_t*)(ids_comma_+idx3*16)); vst1q_s8((int8_t*)s5, tmp); s = sl_[idx3]; ret_num_[2] += s; s5 += s;
-                    tmp = vld1q_s8((int8_t*)(ids_comma_+idx4*16)); vst1q_s8((int8_t*)s5, tmp); s = sl_[idx4]; ret_num_[2] += s; s5 += s;
-                    tmp = vld1q_s8((int8_t*)(ids_line_+idx5*16));  vst1q_s8((int8_t*)s5, tmp); s = sl_[idx5]; ret_num_[2] += s; s5 += s;
+                    tmp = vld1q_s8(ids_comma_+idx1*16); vst1q_s8(s5, tmp); s = sl_[idx1]; ret_num_[2] += s; s5 += s;
+                    tmp = vld1q_s8(ids_comma_+idx2*16); vst1q_s8(s5, tmp); s = sl_[idx2]; ret_num_[2] += s; s5 += s;
+                    tmp = vld1q_s8(ids_comma_+idx3*16); vst1q_s8(s5, tmp); s = sl_[idx3]; ret_num_[2] += s; s5 += s;
+                    tmp = vld1q_s8(ids_comma_+idx4*16); vst1q_s8(s5, tmp); s = sl_[idx4]; ret_num_[2] += s; s5 += s;
+                    tmp = vld1q_s8(ids_line_+idx5*16);  vst1q_s8(s5, tmp); s = sl_[idx5]; ret_num_[2] += s; s5 += s;
 	                  path_num_++;
 	                }
 
@@ -264,26 +264,26 @@ public:
 
 		                if (status_map_[idx6*3] == false && status_map_[idx6*3+1] == true) {
 	                    if (status_map_[idx6*3+2] == true) {
-                        tmp = vld1q_s8((int8_t*)(ids_comma_+idx1*16)); vst1q_s8((int8_t*)s6, tmp); s = sl_[idx1]; ret_num_[3] += s; s6 += s;
-                        tmp = vld1q_s8((int8_t*)(ids_comma_+idx2*16)); vst1q_s8((int8_t*)s6, tmp); s = sl_[idx2]; ret_num_[3] += s; s6 += s;
-                        tmp = vld1q_s8((int8_t*)(ids_comma_+idx3*16)); vst1q_s8((int8_t*)s6, tmp); s = sl_[idx3]; ret_num_[3] += s; s6 += s;
-                        tmp = vld1q_s8((int8_t*)(ids_comma_+idx4*16)); vst1q_s8((int8_t*)s6, tmp); s = sl_[idx4]; ret_num_[3] += s; s6 += s;
-                        tmp = vld1q_s8((int8_t*)(ids_comma_+idx5*16)); vst1q_s8((int8_t*)s6, tmp); s = sl_[idx5]; ret_num_[3] += s; s6 += s;
-                        tmp = vld1q_s8((int8_t*)(ids_line_+idx6*16));  vst1q_s8((int8_t*)s6, tmp); s = sl_[idx6]; ret_num_[3] += s; s6 += s;
+                        tmp = vld1q_s8(ids_comma_+idx1*16); vst1q_s8(s6, tmp); s = sl_[idx1]; ret_num_[3] += s; s6 += s;
+                        tmp = vld1q_s8(ids_comma_+idx2*16); vst1q_s8(s6, tmp); s = sl_[idx2]; ret_num_[3] += s; s6 += s;
+                        tmp = vld1q_s8(ids_comma_+idx3*16); vst1q_s8(s6, tmp); s = sl_[idx3]; ret_num_[3] += s; s6 += s;
+                        tmp = vld1q_s8(ids_comma_+idx4*16); vst1q_s8(s6, tmp); s = sl_[idx4]; ret_num_[3] += s; s6 += s;
+                        tmp = vld1q_s8(ids_comma_+idx5*16); vst1q_s8(s6, tmp); s = sl_[idx5]; ret_num_[3] += s; s6 += s;
+                        tmp = vld1q_s8(ids_line_+idx6*16);  vst1q_s8(s6, tmp); s = sl_[idx6]; ret_num_[3] += s; s6 += s;
 	                      path_num_++;
 	                    }
 
                       for (int n = 0; n < out_degrees_[idx6]; n++) {
                         idx7 = G_[idx6*50+n];
 
-			                  if (status_map_[idx7*3] == false && status_map_[idx7*3+1] == true && status_map_[idx7*3+2] == true) {
-                          tmp = vld1q_s8((int8_t*)(ids_comma_+idx1*16)); vst1q_s8((int8_t*)s7, tmp); s = sl_[idx1]; ret_num_[4] += s; s7 += s;
-                          tmp = vld1q_s8((int8_t*)(ids_comma_+idx2*16)); vst1q_s8((int8_t*)s7, tmp); s = sl_[idx2]; ret_num_[4] += s; s7 += s;
-                          tmp = vld1q_s8((int8_t*)(ids_comma_+idx3*16)); vst1q_s8((int8_t*)s7, tmp); s = sl_[idx3]; ret_num_[4] += s; s7 += s;
-                          tmp = vld1q_s8((int8_t*)(ids_comma_+idx4*16)); vst1q_s8((int8_t*)s7, tmp); s = sl_[idx4]; ret_num_[4] += s; s7 += s;
-                          tmp = vld1q_s8((int8_t*)(ids_comma_+idx5*16)); vst1q_s8((int8_t*)s7, tmp); s = sl_[idx5]; ret_num_[4] += s; s7 += s;
-                          tmp = vld1q_s8((int8_t*)(ids_comma_+idx6*16)); vst1q_s8((int8_t*)s7, tmp); s = sl_[idx6]; ret_num_[4] += s; s7 += s;
-                          tmp = vld1q_s8((int8_t*)(ids_line_+idx7*16));  vst1q_s8((int8_t*)s7, tmp); s = sl_[idx7]; ret_num_[4] += s; s7 += s;
+			                  if (status_map_[idx7*3] == false && status_map_[idx7*3+2] == true) {
+                          tmp = vld1q_s8(ids_comma_+idx1*16); vst1q_s8(s7, tmp); s = sl_[idx1]; ret_num_[4] += s; s7 += s;
+                          tmp = vld1q_s8(ids_comma_+idx2*16); vst1q_s8(s7, tmp); s = sl_[idx2]; ret_num_[4] += s; s7 += s;
+                          tmp = vld1q_s8(ids_comma_+idx3*16); vst1q_s8(s7, tmp); s = sl_[idx3]; ret_num_[4] += s; s7 += s;
+                          tmp = vld1q_s8(ids_comma_+idx4*16); vst1q_s8(s7, tmp); s = sl_[idx4]; ret_num_[4] += s; s7 += s;
+                          tmp = vld1q_s8(ids_comma_+idx5*16); vst1q_s8(s7, tmp); s = sl_[idx5]; ret_num_[4] += s; s7 += s;
+                          tmp = vld1q_s8(ids_comma_+idx6*16); vst1q_s8(s7, tmp); s = sl_[idx6]; ret_num_[4] += s; s7 += s;
+                          tmp = vld1q_s8(ids_line_+idx7*16);  vst1q_s8(s7, tmp); s = sl_[idx7]; ret_num_[4] += s; s7 += s;
 	                        path_num_++;
 			                  }
 		                  }    
@@ -318,28 +318,19 @@ public:
       exit(1);
     }
     
-    int bias = 0;
     char buf[15];
-    const int block_size = 1024*1024;
-    
     sprintf(buf, "%d\n", path_num_);
     fwrite(buf, strlen(buf), sizeof(char), fp);
 
-    for (int i = 0; i < 5; i++) {
-      while (ret_num_[i] >= block_size) {
-        fwrite(ret_[i]+bias, block_size, sizeof(char), fp);
-        ret_num_[i] -= block_size;
-        bias += block_size;
-      }
-      fwrite(ret_[i]+bias, ret_num_[i], sizeof(char), fp);
-      bias = 0;
-    }
+    for (int i = 0; i < 5; i++)
+      fwrite((char*)ret_[i], ret_num_[i], sizeof(char), fp);
+
     fclose(fp);
   }
 
 private:
-  char* ids_comma_;
-  char* ids_line_;
+  int8_t* ids_comma_;
+  int8_t* ids_line_;
   int* sl_;
 
   int ids_num_ = 0;
@@ -349,12 +340,12 @@ private:
   bool* status_map_;
   int* in_degrees_;
   int* out_degrees_;
-  char* ret3_ = new char[33*500000+10]; 
-  char* ret4_ = new char[44*500000+10]; 
-  char* ret5_ = new char[55*1000000+10];
-  char* ret6_ = new char[66*2000000+10];
-  char* ret7_ = new char[77*3000000+10];
-  char* ret_[5] = {ret3_, ret4_, ret5_, ret6_, ret7_};
+  int8_t* ret3_ = new int8_t[33*500000+10]; 
+  int8_t* ret4_ = new int8_t[44*500000+10]; 
+  int8_t* ret5_ = new int8_t[55*1000000+10];
+  int8_t* ret6_ = new int8_t[66*2000000+10];
+  int8_t* ret7_ = new int8_t[77*3000000+10];
+  int8_t* ret_[5] = {ret3_, ret4_, ret5_, ret6_, ret7_};
   int ret_num_[5] = {0, 0, 0, 0, 0}; 
   int ret_step_[5] = {4, 4, 8, 8, 8};
   int path_num_ = 0; 
@@ -362,8 +353,8 @@ private:
 
 
 int main(int argc, char** argv) {
-  DirectedGraph directed_graph("../data/test_data.txt");
-  // DirectedGraph directed_graph("/root/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
+  // DirectedGraph directed_graph("../data/test_data.txt");
+  DirectedGraph directed_graph("/root/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
   // DirectedGraph directed_graph("/data/test_data.txt");
 
   directed_graph.FindAllCycles();

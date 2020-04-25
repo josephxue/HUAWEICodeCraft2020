@@ -172,12 +172,11 @@ public:
   }
 
   void FindAllCycles() {
-    status_map_ = new bool[ids_num_*3]();
+    status_map_ = new short[ids_num_]();
 
     int idx1, idx2, idx3, idx4, idx5, idx6, idx7;
 
-    int tail_idxes[50]; int tail_idxes_size = 0;
-    int* effective_idxes = new int[125000]; int effective_idxes_size = 0;
+    int effective_idxes[125000]; int effective_idxes_size = 0;
 
     int8_t* s3 = ret_[0];
     int8_t* s4 = ret_[1];
@@ -195,19 +194,20 @@ public:
       for (int i = 0; i < in_degrees_[idx1]; i++) {
         idx2 = inv_G_[idx1*50+i];
         if (idx2 <= idx1) continue;
-        status_map_[idx2*3+1] = true; status_map_[idx2*3+2] = true;
+        status_map_[idx2] = 3;
 	      effective_idxes[effective_idxes_size++] = idx2;
-        tail_idxes[tail_idxes_size++] = idx2;
 
         for (int j = 0; j < in_degrees_[idx2]; j++) {
           idx3 = inv_G_[idx2*50+j];
           if (idx3 <= idx1) continue;
-          status_map_[idx3*3+1] = true; effective_idxes[effective_idxes_size++] = idx3;
+          status_map_[idx3] = status_map_[idx3] < 2 ? 2 : status_map_[idx3];
+          effective_idxes[effective_idxes_size++] = idx3;
 
           for (int k = 0; k < in_degrees_[idx3]; k++) {
             idx4 = inv_G_[idx3*50+k];
             if (idx4 <= idx1) continue;
-            status_map_[idx4*3+1] = true; effective_idxes[effective_idxes_size++] = idx4;
+            status_map_[idx4] = status_map_[idx4] == 0 ? 1 : status_map_[idx4];
+            effective_idxes[effective_idxes_size++] = idx4;
           }
         }
       }
@@ -216,27 +216,25 @@ public:
         idx2 = G_[idx1*50+i];
         if (idx2 < idx1 || out_degrees_[idx2] == 0) continue;
         if (G_[idx2*50+out_degrees_[idx2]-1] < idx1) continue;
-        status_map_[idx2*3] = true;
 
+        status_map_[idx2] = status_map_[idx2] == 0 ? -4 : (-1)*status_map_[idx2];
         for (int j = 0; j < out_degrees_[idx2]; j++) {
           idx3 = G_[idx2*50+j];
           if (idx3 <= idx1) continue;
-          status_map_[idx3*3] = true;
 
-	        if (status_map_[idx3*3+2] == true) {
+	        if (status_map_[idx3] == 3) {
             tmp = vld1q_s8(ids_comma_+idx1*16); vst1q_s8(s3, tmp); s = sl_[idx1]; ret_num_[0] += s; s3 += s;
             tmp = vld1q_s8(ids_comma_+idx2*16); vst1q_s8(s3, tmp); s = sl_[idx2]; ret_num_[0] += s; s3 += s;
             tmp = vld1q_s8(ids_line_+idx3*16);  vst1q_s8(s3, tmp); s = sl_[idx3]; ret_num_[0] += s; s3 += s;
 	          path_num_++;
 	        }
 
+          status_map_[idx3] = status_map_[idx3] == 0 ? -4 : (-1)*status_map_[idx3];
           for (int k = 0; k < out_degrees_[idx3]; k++) {
             idx4 = G_[idx3*50+k];
 
-            if (idx4 > idx1 && status_map_[idx4*3] == false) {
-              status_map_[idx4*3] = true;
-
-	            if (status_map_[idx4*3+2] == true) {
+            if (idx4 > idx1 && status_map_[idx4] >= 0) {
+	            if (status_map_[idx4] == 3) {
                 tmp = vld1q_s8(ids_comma_+idx1*16); vst1q_s8(s4, tmp); s = sl_[idx1]; ret_num_[1] += s; s4 += s;
                 tmp = vld1q_s8(ids_comma_+idx2*16); vst1q_s8(s4, tmp); s = sl_[idx2]; ret_num_[1] += s; s4 += s;
                 tmp = vld1q_s8(ids_comma_+idx3*16); vst1q_s8(s4, tmp); s = sl_[idx3]; ret_num_[1] += s; s4 += s;
@@ -244,13 +242,12 @@ public:
 	              path_num_++;
 	            }
 
+              status_map_[idx4] = status_map_[idx4] == 0 ? -4 : (-1)*status_map_[idx4];
               for (int l = 0; l < out_degrees_[idx4]; l++) {
                 idx5 = G_[idx4*50+l];
 
-                if (status_map_[idx5*3] == false && status_map_[idx5*3+1] == true) {
-                  status_map_[idx5*3] = true;
-
-	                if (status_map_[idx5*3+2] == true) {
+                if (status_map_[idx5] > 0) {
+	                if (status_map_[idx5] == 3) {
                     tmp = vld1q_s8(ids_comma_+idx1*16); vst1q_s8(s5, tmp); s = sl_[idx1]; ret_num_[2] += s; s5 += s;
                     tmp = vld1q_s8(ids_comma_+idx2*16); vst1q_s8(s5, tmp); s = sl_[idx2]; ret_num_[2] += s; s5 += s;
                     tmp = vld1q_s8(ids_comma_+idx3*16); vst1q_s8(s5, tmp); s = sl_[idx3]; ret_num_[2] += s; s5 += s;
@@ -259,11 +256,12 @@ public:
 	                  path_num_++;
 	                }
 
+                  status_map_[idx5] *= -1;
                   for (int m = 0; m < out_degrees_[idx5]; m++) {
                     idx6 = G_[idx5*50+m];
 
-		                if (status_map_[idx6*3] == false && status_map_[idx6*3+1] == true) {
-	                    if (status_map_[idx6*3+2] == true) {
+		                if (status_map_[idx6] > 1) {
+	                    if (status_map_[idx6] == 3) {
                         tmp = vld1q_s8(ids_comma_+idx1*16); vst1q_s8(s6, tmp); s = sl_[idx1]; ret_num_[3] += s; s6 += s;
                         tmp = vld1q_s8(ids_comma_+idx2*16); vst1q_s8(s6, tmp); s = sl_[idx2]; ret_num_[3] += s; s6 += s;
                         tmp = vld1q_s8(ids_comma_+idx3*16); vst1q_s8(s6, tmp); s = sl_[idx3]; ret_num_[3] += s; s6 += s;
@@ -276,7 +274,7 @@ public:
                       for (int n = 0; n < out_degrees_[idx6]; n++) {
                         idx7 = G_[idx6*50+n];
 
-			                  if (status_map_[idx7*3] == false && status_map_[idx7*3+2] == true) {
+			                  if (status_map_[idx7] == 3) {
                           tmp = vld1q_s8(ids_comma_+idx1*16); vst1q_s8(s7, tmp); s = sl_[idx1]; ret_num_[4] += s; s7 += s;
                           tmp = vld1q_s8(ids_comma_+idx2*16); vst1q_s8(s7, tmp); s = sl_[idx2]; ret_num_[4] += s; s7 += s;
                           tmp = vld1q_s8(ids_comma_+idx3*16); vst1q_s8(s7, tmp); s = sl_[idx3]; ret_num_[4] += s; s7 += s;
@@ -289,26 +287,22 @@ public:
 		                  }    
 		                }
                   }
-                  status_map_[idx5*3] = false;
+                  status_map_[idx5] *= -1;
                 }
               }
-              status_map_[idx4*3] = false;
+              status_map_[idx4] = status_map_[idx4] == -4 ? 0 : (-1)*status_map_[idx4];
             }
           }
-          status_map_[idx3*3] = false;
+          status_map_[idx3] = status_map_[idx3] == -4 ? 0 : (-1)*status_map_[idx3];
         }
-        status_map_[idx2*3] = false;
+        status_map_[idx2] = status_map_[idx2] == -4 ? 0 : (-1)*status_map_[idx2];
       }
 
-      for (int i = 0; i < tail_idxes_size; i++) {
-        status_map_[tail_idxes[i]*3+2] = false;
-      }
       for (int i = 0; i < effective_idxes_size; i++) {
-        status_map_[effective_idxes[i]*3+1] = false;
+        status_map_[effective_idxes[i]] = 0;
       }
-      tail_idxes_size = 0; effective_idxes_size = 0;
+      effective_idxes_size = 0;
     }
-    delete[](effective_idxes);
   }
 
   void WriteFile(const char* filename) {
@@ -337,7 +331,7 @@ private:
 
   int* G_;
   int* inv_G_;
-  bool* status_map_;
+  short* status_map_;
   int* in_degrees_;
   int* out_degrees_;
   int8_t* ret3_ = new int8_t[33*500000+10]; 
@@ -354,13 +348,13 @@ private:
 
 int main(int argc, char** argv) {
   // DirectedGraph directed_graph("../data/test_data.txt");
-  DirectedGraph directed_graph("/root/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
-  // DirectedGraph directed_graph("/data/test_data.txt");
+  // DirectedGraph directed_graph("/root/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
+  DirectedGraph directed_graph("/data/test_data.txt");
 
   directed_graph.FindAllCycles();
 
-  directed_graph.WriteFile("go.txt");
-  // directed_graph.WriteFile("/projects/student/result.txt");
+  // directed_graph.WriteFile("go.txt");
+  directed_graph.WriteFile("/projects/student/result.txt");
 
   return 0;
 }

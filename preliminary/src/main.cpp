@@ -10,7 +10,8 @@
 #include <queue>
 #include <algorithm>
 
-#define DG 30
+#define DG  30
+#define DiG 30
 
 
 class DirectedGraph {
@@ -117,7 +118,7 @@ public:
     delete[](ids);
 
     G_     = new int[ids_num_*DG];
-    inv_G_ = new int[ids_num_*50];
+    inv_G_ = new int[ids_num_*DiG];
     in_degrees_  = new int[ids_num_]();
     out_degrees_ = new int[ids_num_]();
 
@@ -125,7 +126,7 @@ public:
     for (int i = 0; i < inputs_size; i+=2) {
       send_idx = m[inputs[i]]; recv_idx = m[inputs[i+1]];
       G_[send_idx*DG+out_degrees_[send_idx]] = recv_idx;
-      inv_G_[recv_idx*50+in_degrees_[recv_idx]] = send_idx;
+      inv_G_[recv_idx*DiG+in_degrees_[recv_idx]] = send_idx;
       in_degrees_[recv_idx]++;
       out_degrees_[send_idx]++;
     }
@@ -144,7 +145,7 @@ public:
       for (int i = 0; i < out_degrees_[u]; i++) {
         v = G_[u*DG+i];
 	      for (int j = 0; j < in_degrees_[v]; j++) {
-	        if (inv_G_[v*50+j] == u) inv_G_[v*50+j] = inv_G_[v*50+in_degrees_[v]-1];
+	        if (inv_G_[v*DiG+j] == u) inv_G_[v*DiG+j] = inv_G_[v*DiG+in_degrees_[v]-1];
 	      }
         if (0 == --in_degrees_[v]) q.push(v);
       }
@@ -156,7 +157,7 @@ public:
       u = q.front();
       q.pop();
       for (int i = 0; i < in_degrees_[u]; i++) {
-        v = inv_G_[u*50+i];
+        v = inv_G_[u*DiG+i];
 	      for (int j = 0; j < out_degrees_[v]; j++) {
 	        if (G_[v*DG+j] == u) G_[v*DG+j] = G_[v*DG+out_degrees_[v]-1];
 	      }
@@ -199,7 +200,7 @@ public:
 
     int idx1, idx2, idx3, idx4, idx5, idx6, idx7;
 
-    int effective_idxes[125000]; int effective_idxes_size = 0;
+    int effective_idxes[27000]; int effective_idxes_size = 0;
 
     int8_t* s3 = ret_[0];
     int8_t* s4 = ret_[1];
@@ -215,19 +216,19 @@ public:
       if (G_[idx1*DG+out_degrees_[idx1]-1] < idx1) continue;
 
       for (int i = 0; i < in_degrees_[idx1]; i++) {
-        idx2 = inv_G_[idx1*50+i];
+        idx2 = inv_G_[idx1*DiG+i];
         if (idx2 <= idx1) continue;
         status_map_[idx2] = 3;
 	      effective_idxes[effective_idxes_size++] = idx2;
 
         for (int j = 0; j < in_degrees_[idx2]; j++) {
-          idx3 = inv_G_[idx2*50+j];
+          idx3 = inv_G_[idx2*DiG+j];
           if (idx3 <= idx1) continue;
           status_map_[idx3] = status_map_[idx3] < 2 ? 2 : status_map_[idx3];
           effective_idxes[effective_idxes_size++] = idx3;
 
           for (int k = 0; k < in_degrees_[idx3]; k++) {
-            idx4 = inv_G_[idx3*50+k];
+            idx4 = inv_G_[idx3*DiG+k];
             if (idx4 <= idx1) continue;
             status_map_[idx4] = status_map_[idx4] == 0 ? 1 : status_map_[idx4];
             effective_idxes[effective_idxes_size++] = idx4;

@@ -217,7 +217,7 @@ public:
 
       for (int i = 0; i < in_degrees_[idx1]; i++) {
         idx2 = inv_G_[idx1*DiG+i];
-        if (idx2 <= idx1) continue;
+        if (idx2 < idx1) continue;
         status_map_[idx2] = 3;
 	      effective_idxes[effective_idxes_size++] = idx2;
 
@@ -378,7 +378,6 @@ int main(int argc, char** argv) {
 
   // directed_graph.WriteFile("go.txt");
   directed_graph.WriteFile("/projects/student/result.txt");
-  sleep(5);
 
   return 0;
 }

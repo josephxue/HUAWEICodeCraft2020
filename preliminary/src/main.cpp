@@ -365,7 +365,6 @@ private:
   int8_t* ret7_ = new int8_t[77*3000000+10];
   int8_t* ret_[5] = {ret3_, ret4_, ret5_, ret6_, ret7_};
   int ret_num_[5] = {0, 0, 0, 0, 0}; 
-  int ret_step_[5] = {4, 4, 8, 8, 8};
   int path_num_ = 0; 
 };
 

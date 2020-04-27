@@ -10,6 +10,8 @@
 #include <queue>
 #include <algorithm>
 
+#define DG 30
+
 
 class DirectedGraph {
 public:
@@ -46,19 +48,40 @@ public:
     int split = 0;
     int8x16_t tmp;
     int max_id = -1;
-    int val;
+    int val1, val2;
+
     for (int i = 0; i < filesize; i++, current++) {
       if (*current == '\n' || *current == ',') {
-	      if (++split % 3 != 0) {
-          s = current - start;
-	        tmp = vld1q_s8(start);
-	        vst1q_s8(buf, tmp);
-	        buf[s] = '\0';
-	        val = atoi((char*)buf);
-          inputs[inputs_size++] = val;
-	        max_id = val > max_id ? val : max_id;
-	      }
-	      start = current+1;
+        switch(++split%3) {
+          case 1: {
+            s = current - start;
+	          tmp = vld1q_s8(start);
+	          vst1q_s8(buf, tmp);
+	          buf[s] = '\0';
+	          val1 = atoi((char*)buf);
+	          start = current+1;
+            break;
+          }
+          case 2: {
+            s = current - start;
+	          tmp = vld1q_s8(start);
+	          vst1q_s8(buf, tmp);
+	          buf[s] = '\0';
+	          val2 = atoi((char*)buf);
+	          start = current+1;
+            if (val1 <= 50000 && val2 <= 50000) {
+              inputs[inputs_size++] = val1;
+              inputs[inputs_size++] = val2;
+	            max_id = val1 > max_id ? val1 : max_id;
+	            max_id = val2 > max_id ? val2 : max_id;
+            }
+            break;
+          }
+          default: {
+	          start = current+1;
+            break;
+          }
+        }
       }
     }
 
@@ -93,7 +116,7 @@ public:
 
     delete[](ids);
 
-    G_     = new int[ids_num_*50];
+    G_     = new int[ids_num_*DG];
     inv_G_ = new int[ids_num_*50];
     in_degrees_  = new int[ids_num_]();
     out_degrees_ = new int[ids_num_]();
@@ -101,7 +124,7 @@ public:
     int send_idx = -1; int recv_idx = -1;
     for (int i = 0; i < inputs_size; i+=2) {
       send_idx = m[inputs[i]]; recv_idx = m[inputs[i+1]];
-      G_[send_idx*50+out_degrees_[send_idx]] = recv_idx;
+      G_[send_idx*DG+out_degrees_[send_idx]] = recv_idx;
       inv_G_[recv_idx*50+in_degrees_[recv_idx]] = send_idx;
       in_degrees_[recv_idx]++;
       out_degrees_[send_idx]++;
@@ -119,7 +142,7 @@ public:
       u = q.front();
       q.pop();
       for (int i = 0; i < out_degrees_[u]; i++) {
-        v = G_[u*50+i];
+        v = G_[u*DG+i];
 	      for (int j = 0; j < in_degrees_[v]; j++) {
 	        if (inv_G_[v*50+j] == u) inv_G_[v*50+j] = inv_G_[v*50+in_degrees_[v]-1];
 	      }
@@ -135,7 +158,7 @@ public:
       for (int i = 0; i < in_degrees_[u]; i++) {
         v = inv_G_[u*50+i];
 	      for (int j = 0; j < out_degrees_[v]; j++) {
-	        if (G_[v*50+j] == u) G_[v*50+j] = G_[v*50+out_degrees_[v]-1];
+	        if (G_[v*DG+j] == u) G_[v*DG+j] = G_[v*DG+out_degrees_[v]-1];
 	      }
         if (0 == --out_degrees_[v]) q.push(v);
       }
@@ -149,11 +172,11 @@ public:
         for (int j = 0; j < out_degrees_[i]-1; j++) {
           is_sorted = true;
           for (int k = 0; k < out_degrees_[i]-1-j; k++) {
-            if (*(G_+i*50+k) > *(G_+i*50+k+1)) {
+            if (*(G_+i*DG+k) > *(G_+i*DG+k+1)) {
               is_sorted = false;
-              tmpsort = *(G_+i*50+k);
-              *(G_+i*50+k) = *(G_+i*50+k+1);
-              *(G_+i*50+k+1) = tmpsort;
+              tmpsort = *(G_+i*DG+k);
+              *(G_+i*DG+k) = *(G_+i*DG+k+1);
+              *(G_+i*DG+k+1) = tmpsort;
             }
           }
           if(is_sorted) break;
@@ -189,7 +212,7 @@ public:
 
     for (idx1 = 0; idx1 < ids_num_; idx1++) {
       if (out_degrees_[idx1] == 0) continue;
-      if (G_[idx1*50+out_degrees_[idx1]-1] < idx1) continue;
+      if (G_[idx1*DG+out_degrees_[idx1]-1] < idx1) continue;
 
       for (int i = 0; i < in_degrees_[idx1]; i++) {
         idx2 = inv_G_[idx1*50+i];
@@ -213,13 +236,13 @@ public:
       }
 
       for (int i = 0; i < out_degrees_[idx1]; i++) {
-        idx2 = G_[idx1*50+i];
+        idx2 = G_[idx1*DG+i];
         if (idx2 < idx1 || out_degrees_[idx2] == 0) continue;
-        if (G_[idx2*50+out_degrees_[idx2]-1] < idx1) continue;
+        if (G_[idx2*DG+out_degrees_[idx2]-1] < idx1) continue;
 
         status_map_[idx2] = status_map_[idx2] == 0 ? -4 : (-1)*status_map_[idx2];
         for (int j = 0; j < out_degrees_[idx2]; j++) {
-          idx3 = G_[idx2*50+j];
+          idx3 = G_[idx2*DG+j];
           if (idx3 <= idx1) continue;
 
 	        if (status_map_[idx3] == 3) {
@@ -231,7 +254,7 @@ public:
 
           status_map_[idx3] = status_map_[idx3] == 0 ? -4 : (-1)*status_map_[idx3];
           for (int k = 0; k < out_degrees_[idx3]; k++) {
-            idx4 = G_[idx3*50+k];
+            idx4 = G_[idx3*DG+k];
 
             if (idx4 > idx1 && status_map_[idx4] >= 0) {
 	            if (status_map_[idx4] == 3) {
@@ -244,7 +267,7 @@ public:
 
               status_map_[idx4] = status_map_[idx4] == 0 ? -4 : (-1)*status_map_[idx4];
               for (int l = 0; l < out_degrees_[idx4]; l++) {
-                idx5 = G_[idx4*50+l];
+                idx5 = G_[idx4*DG+l];
 
                 if (status_map_[idx5] > 0) {
 	                if (status_map_[idx5] == 3) {
@@ -258,7 +281,7 @@ public:
 
                   status_map_[idx5] *= -1;
                   for (int m = 0; m < out_degrees_[idx5]; m++) {
-                    idx6 = G_[idx5*50+m];
+                    idx6 = G_[idx5*DG+m];
 
 		                if (status_map_[idx6] > 1) {
 	                    if (status_map_[idx6] == 3) {
@@ -272,7 +295,7 @@ public:
 	                    }
 
                       for (int n = 0; n < out_degrees_[idx6]; n++) {
-                        idx7 = G_[idx6*50+n];
+                        idx7 = G_[idx6*DG+n];
 
 			                  if (status_map_[idx7] == 3) {
                           tmp = vld1q_s8(ids_comma_+idx1*16); vst1q_s8(s7, tmp); s = sl_[idx1]; ret_num_[4] += s; s7 += s;
@@ -355,6 +378,7 @@ int main(int argc, char** argv) {
 
   // directed_graph.WriteFile("go.txt");
   directed_graph.WriteFile("/projects/student/result.txt");
+  sleep(5);
 
   return 0;
 }

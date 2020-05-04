@@ -1,1 +1,1 @@
-# huawei_challenge
+# HUAWEICodeCraft2020

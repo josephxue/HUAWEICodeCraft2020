@@ -8,11 +8,13 @@
 #include <arm_neon.h>
 
 #include <queue>
+#include <iostream>
 #include <algorithm>
+#include <unordered_map>
 
 
-#define DG  30
-#define DiG 30
+#define DG  1000 
+#define DiG 1000
 
 
 class DirectedGraph {
@@ -46,7 +48,8 @@ public:
     
     start = p; current = p; 
     int s;
-    int* inputs = new int[560000]; int inputs_size = 0;
+    int* inputs = new int[4000000]; int inputs_size = 0;
+    int* inputs_money = new int[2000000]; int inputs_money_size = 0;
     int split = 0;
     int8x16_t tmp;
     int max_id = -1;
@@ -54,32 +57,28 @@ public:
 
     for (int i = 0; i < filesize; i++, current++) {
       if (*current == '\n' || *current == ',') {
+        s = current - start;
+        tmp = vld1q_s8(start);
+        vst1q_s8(buf, tmp);
+        buf[s] = '\0';
+
         switch(++split%3) {
           case 1: {
-            s = current - start;
-	          tmp = vld1q_s8(start);
-	          vst1q_s8(buf, tmp);
-	          buf[s] = '\0';
 	          val1 = atoi((char*)buf);
 	          start = current+1;
             break;
           }
           case 2: {
-            s = current - start;
-	          tmp = vld1q_s8(start);
-	          vst1q_s8(buf, tmp);
-	          buf[s] = '\0';
 	          val2 = atoi((char*)buf);
 	          start = current+1;
-            if (val1 <= 50000 && val2 <= 50000) {
-              inputs[inputs_size++] = val1;
-              inputs[inputs_size++] = val2;
-	            max_id = val1 > max_id ? val1 : max_id;
-	            max_id = val2 > max_id ? val2 : max_id;
-            }
+            inputs[inputs_size++] = val1;
+            inputs[inputs_size++] = val2;
+            max_id = val1 > max_id ? val1 : max_id;
+            max_id = val2 > max_id ? val2 : max_id;
             break;
           }
-          default: {
+          case 0: {
+            inputs_money[inputs_money_size++] = atoi((char*)buf);
 	          start = current+1;
             break;
           }
@@ -89,21 +88,13 @@ public:
 
     munmap((void*)p, filesize);
     close(fd);
-    
-    int* m = new int[max_id+1]; 
-    int* c = new int[max_id+1]();
-    int* ids = new int[max_id+1];
-    for (int i = 0; i < inputs_size; i++)
-      c[inputs[i]]++;
-    for (int i = 0; i < max_id+1; i++) {
-      if (c[i] > 0) {
-        ids[ids_num_] = i;
-        m[i] = ids_num_++;
-      }
-    }
 
-    delete[](c);
+    int* ids = new int[inputs_size];
+    memcpy(ids, inputs, sizeof(int)*inputs_size);
+    std::sort(ids, ids+inputs_size);
+    ids_num_ = std::unique(ids, ids+inputs_size) - ids;
 
+    std::unordered_map<int, int> m;
     ids_comma_ = new int8_t[ids_num_*16];
     ids_line_  = new int8_t[ids_num_*16];
     sl_= new int[ids_num_];
@@ -111,6 +102,7 @@ public:
     int id, t;
     for (int i = 0; i < ids_num_; i++) {
       id = ids[i];
+      m[id] = i;
       t = sprintf((char*)ids_comma_+i*16, "%d,",  id);
       sprintf((char*)ids_line_+i*16, "%d\n", id);
       sl_[i] = t;
@@ -123,16 +115,17 @@ public:
     in_degrees_  = new int[ids_num_]();
     out_degrees_ = new int[ids_num_]();
 
-    int send_idx = -1; int recv_idx = -1;
-    for (int i = 0; i < inputs_size; i+=2) {
-      send_idx = m[inputs[i]]; recv_idx = m[inputs[i+1]];
+    int send_idx = -1; int recv_idx = -1; int money = -1;
+    for (int i = 0, j = 0; i < inputs_size; i+=2, j++) {
+      send_idx = m[inputs[i]]; recv_idx = m[inputs[i+1]]; money = inputs_money[j];
       G_[send_idx*DG+out_degrees_[send_idx]] = recv_idx;
       inv_G_[recv_idx*DiG+in_degrees_[recv_idx]] = send_idx;
+      money_hash_[(unsigned long long)send_idx << 32 | recv_idx] = money;
       in_degrees_[recv_idx]++;
       out_degrees_[send_idx]++;
     }
 
-    delete[](inputs); delete[](m);
+    delete[](inputs);
 
     // topo sort
     std::queue<int> q;
@@ -196,12 +189,19 @@ public:
     delete[](ids_comma_); delete[](ids_line_); delete[](sl_);
   }
 
+  inline bool IsGoodProportion(int idx1, int idx2, int idx3) {
+    if (money_hash_[(unsigned long long)idx1 << 32 | idx2] >= money_hash_[(unsigned long long)idx2 << 32 | idx3] / 3.0 && 
+        money_hash_[(unsigned long long)idx2 << 32 | idx3] >= 0.2 * money_hash_[(unsigned long long)idx1 << 32 | idx2])
+    return true;
+    else return false;
+  }
+
   void FindAllCycles() {
     status_map_ = new short[ids_num_]();
 
     int idx1, idx2, idx3, idx4, idx5, idx6, idx7;
 
-    int effective_idxes[27000]; int effective_idxes_size = 0;
+    int effective_idxes[DiG*DiG*DiG]; int effective_idxes_size = 0;
 
     int8_t* s3 = ret_[0];
     int8_t* s4 = ret_[1];
@@ -246,8 +246,9 @@ public:
         for (int j = 0; j < out_degrees_[idx2]; j++) {
           idx3 = G_[idx2*DG+j];
           if (idx3 <= idx1) continue;
+          if (!IsGoodProportion(idx1,idx2,idx3)) continue;
 
-	        if (status_map_[idx3] == 3) {
+	        if (status_map_[idx3] == 3 && IsGoodProportion(idx2,idx3,idx1) && IsGoodProportion(idx3,idx1,idx2)) {
             tmp = vld1q_s8(ids_comma_+idx1*16); vst1q_s8(s3, tmp); s = sl_[idx1]; ret_num_[0] += s; s3 += s;
             tmp = vld1q_s8(ids_comma_+idx2*16); vst1q_s8(s3, tmp); s = sl_[idx2]; ret_num_[0] += s; s3 += s;
             tmp = vld1q_s8(ids_line_+idx3*16);  vst1q_s8(s3, tmp); s = sl_[idx3]; ret_num_[0] += s; s3 += s;
@@ -259,7 +260,7 @@ public:
             idx4 = G_[idx3*DG+k];
 
             if (idx4 > idx1 && status_map_[idx4] >= 0) {
-	            if (status_map_[idx4] == 3) {
+	            if (status_map_[idx4] == 3 && IsGoodProportion(idx2,idx3,idx4) && IsGoodProportion(idx3,idx4,idx1) && IsGoodProportion(idx4,idx1,idx2)) {
                 tmp = vld1q_s8(ids_comma_+idx1*16); vst1q_s8(s4, tmp); s = sl_[idx1]; ret_num_[1] += s; s4 += s;
                 tmp = vld1q_s8(ids_comma_+idx2*16); vst1q_s8(s4, tmp); s = sl_[idx2]; ret_num_[1] += s; s4 += s;
                 tmp = vld1q_s8(ids_comma_+idx3*16); vst1q_s8(s4, tmp); s = sl_[idx3]; ret_num_[1] += s; s4 += s;
@@ -272,7 +273,8 @@ public:
                 idx5 = G_[idx4*DG+l];
 
                 if (status_map_[idx5] > 0) {
-	                if (status_map_[idx5] == 3) {
+	                if (status_map_[idx5] == 3 && IsGoodProportion(idx2,idx3,idx4) && IsGoodProportion(idx3,idx4,idx5) 
+		   && IsGoodProportion(idx4,idx5,idx1) && IsGoodProportion(idx5,idx1,idx2)) {
                     tmp = vld1q_s8(ids_comma_+idx1*16); vst1q_s8(s5, tmp); s = sl_[idx1]; ret_num_[2] += s; s5 += s;
                     tmp = vld1q_s8(ids_comma_+idx2*16); vst1q_s8(s5, tmp); s = sl_[idx2]; ret_num_[2] += s; s5 += s;
                     tmp = vld1q_s8(ids_comma_+idx3*16); vst1q_s8(s5, tmp); s = sl_[idx3]; ret_num_[2] += s; s5 += s;
@@ -286,7 +288,7 @@ public:
                     idx6 = G_[idx5*DG+m];
 
 		                if (status_map_[idx6] > 1) {
-	                    if (status_map_[idx6] == 3) {
+	                    if (status_map_[idx6] == 3 && IsGoodProportion(idx2,idx3,idx4) && IsGoodProportion(idx3,idx4,idx5) && IsGoodProportion(idx4,idx5,idx6) && IsGoodProportion(idx5,idx6,idx1) && IsGoodProportion(idx6,idx1,idx2)) {
                         tmp = vld1q_s8(ids_comma_+idx1*16); vst1q_s8(s6, tmp); s = sl_[idx1]; ret_num_[3] += s; s6 += s;
                         tmp = vld1q_s8(ids_comma_+idx2*16); vst1q_s8(s6, tmp); s = sl_[idx2]; ret_num_[3] += s; s6 += s;
                         tmp = vld1q_s8(ids_comma_+idx3*16); vst1q_s8(s6, tmp); s = sl_[idx3]; ret_num_[3] += s; s6 += s;
@@ -299,7 +301,8 @@ public:
                       for (int n = 0; n < out_degrees_[idx6]; n++) {
                         idx7 = G_[idx6*DG+n];
 
-			                  if (status_map_[idx7] == 3) {
+			                  if (status_map_[idx7] == 3 && IsGoodProportion(idx2,idx3,idx4) && IsGoodProportion(idx3,idx4,idx5) && IsGoodProportion(idx4,idx5,idx6)
+					  && IsGoodProportion(idx5,idx6,idx7) && IsGoodProportion(idx6,idx7,idx1) && IsGoodProportion(idx7,idx1,idx2)) {
                           tmp = vld1q_s8(ids_comma_+idx1*16); vst1q_s8(s7, tmp); s = sl_[idx1]; ret_num_[4] += s; s7 += s;
                           tmp = vld1q_s8(ids_comma_+idx2*16); vst1q_s8(s7, tmp); s = sl_[idx2]; ret_num_[4] += s; s7 += s;
                           tmp = vld1q_s8(ids_comma_+idx3*16); vst1q_s8(s7, tmp); s = sl_[idx3]; ret_num_[4] += s; s7 += s;
@@ -359,11 +362,13 @@ private:
   short* status_map_;
   int* in_degrees_;
   int* out_degrees_;
-  int8_t* ret3_ = new int8_t[33*500000+10]; 
-  int8_t* ret4_ = new int8_t[44*500000+10]; 
-  int8_t* ret5_ = new int8_t[55*1000000+10];
-  int8_t* ret6_ = new int8_t[66*2000000+10];
-  int8_t* ret7_ = new int8_t[77*3000000+10];
+  std::unordered_map<unsigned long long, int> money_hash_;
+
+  int8_t* ret3_ = new int8_t[33*10000000]; 
+  int8_t* ret4_ = new int8_t[44*10000000]; 
+  int8_t* ret5_ = new int8_t[55*10000000];
+  int8_t* ret6_ = new int8_t[66*20000000];
+  int8_t* ret7_ = new int8_t[77*20000000];
   int8_t* ret_[5] = {ret3_, ret4_, ret5_, ret6_, ret7_};
   int ret_num_[5] = {0, 0, 0, 0, 0}; 
   int path_num_ = 0; 
@@ -371,14 +376,14 @@ private:
 
 
 int main(int argc, char** argv) {
-  // DirectedGraph directed_graph("../data/test_data.txt");
+  DirectedGraph directed_graph("../data/test_data.txt.bak");
   // DirectedGraph directed_graph("/root/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
-  DirectedGraph directed_graph("/data/test_data.txt");
+  // DirectedGraph directed_graph("/data/test_data.txt");
 
   directed_graph.FindAllCycles();
 
-  // directed_graph.WriteFile("go.txt");
-  directed_graph.WriteFile("/projects/student/result.txt");
+  directed_graph.WriteFile("go.txt");
+  // directed_graph.WriteFile("/projects/student/result.txt");
 
   return 0;
 }

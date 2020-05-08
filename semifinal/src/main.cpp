@@ -34,16 +34,10 @@ struct Path {
 
 class Solution {
 public:
-  vector<vector<int>> G;
-  unordered_map<unsigned int, int> idHash; //sorted id to 0...n
-  //bad case, don't follow
-  unordered_map<unsigned long long, int> migic;
-  unsigned int* ids;
-  unsigned int* inputs = new unsigned int[4000000]; int inputs_size = 0;
-  vector<int> inDegrees;
-  vector<bool> vis;
-  vector<Path> ans;
-  int nodeCnt;
+  ~Solution() {
+    delete[](ids);
+    delete[](input_ids_);
+  }
 
   inline bool check(int x, int y) {
       if(x==0 || y==0) return false;
@@ -98,8 +92,8 @@ public:
           case 2: {
             val2 = strtoul((char*)buf, NULL, 10);
             start = current+1;
-            inputs[inputs_size++] = val1;
-            inputs[inputs_size++] = val2;
+            input_ids_[input_ids_size_++] = val1;
+            input_ids_[input_ids_size_++] = val2;
             break;
           }
           case 0: {
@@ -116,19 +110,19 @@ public:
   }
 
   void constructGraph() {
-    ids = new unsigned int[inputs_size];
-    memcpy(ids, inputs, sizeof(unsigned int)*inputs_size);
-    std::sort(ids, ids+inputs_size);
-    nodeCnt = std::unique(ids, ids+inputs_size) - ids;
+    ids = new unsigned int[input_ids_size_];
+    memcpy(ids, input_ids_, sizeof(unsigned int)*input_ids_size_);
+    std::sort(ids, ids+input_ids_size_);
+    ids_num_ = std::unique(ids, ids+input_ids_size_) - ids;
 
-    for (int i = 0; i < nodeCnt; i++) {
+    for (int i = 0; i < ids_num_; i++) {
       idHash[ids[i]] = i;
     }
 
-    G = vector<vector<int>>(nodeCnt);
-    inDegrees = vector<int>(nodeCnt, 0);
-    for (int i = 0; i < inputs_size; i += 2) {
-      int u = idHash[inputs[i]], v = idHash[inputs[i+1]];
+    G = vector<vector<int>>(ids_num_);
+    inDegrees = vector<int>(ids_num_, 0);
+    for (int i = 0; i < input_ids_size_; i += 2) {
+      int u = idHash[input_ids_[i]], v = idHash[input_ids_[i+1]];
       G[u].push_back(v);
       ++inDegrees[v];
     }
@@ -165,9 +159,9 @@ public:
   //search from 0...n
   //由于要求id最小的在前，因此搜索的全过程中不考虑比起点id更小的节点
   void solve() {
-      vis = vector<bool>(nodeCnt, false);
+      vis = vector<bool>(ids_num_, false);
       vector<int> path;
-      for (int i = 0; i < nodeCnt; i++) {
+      for (int i = 0; i < ids_num_; i++) {
           if (!G[i].empty()) {
               dfs(i, i, 1, path);
           }
@@ -187,6 +181,24 @@ public:
           out << endl;
       }
   }
+
+private:
+  vector<vector<int>> G;
+  unordered_map<unsigned int, int> idHash; //sorted id to 0...n
+  //bad case, don't follow
+  unordered_map<unsigned long long, int> migic;
+  unsigned int* ids;
+  unsigned int* input_ids_ = new unsigned int[4000000]; int input_ids_size_ = 0;
+  vector<int> inDegrees;
+  vector<bool> vis;
+  vector<Path> ans;
+  int ids_num_;
+
+  std::vector<std::string> ret3_;
+  std::vector<std::string> ret4_;
+  std::vector<std::string> ret5_;
+  std::vector<std::string> ret6_;
+  std::vector<std::string> ret7_;
 };
 
 

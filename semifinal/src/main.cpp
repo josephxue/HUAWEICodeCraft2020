@@ -17,21 +17,6 @@
 using namespace std;
 
 
-struct Path {
-  int length;
-  vector<unsigned int> path;
-
-  Path(int length, const vector<unsigned int> &path) : length(length), path(path) {}
-
-  bool operator<(const Path &rhs) const {
-      if (length != rhs.length) return length < rhs.length;
-      for (int i = 0; i < length; i++) {
-          if (path[i] != rhs.path[i])
-              return path[i] < rhs.path[i];
-      }
-  }
-};
-
 class Solution {
 public:
   ~Solution() {
@@ -126,6 +111,9 @@ public:
       G[u].push_back(v);
       ++inDegrees[v];
     }
+    for (auto& g : G) {
+      std::sort(g.begin(), g.end());
+    }
   }
 
   //magic code,don't touch
@@ -137,49 +125,49 @@ public:
       return true;
   }
 
-  void dfs(int head, int cur, int depth, vector<int> &path) {
-      vis[cur] = true;
-      path.push_back(cur);
-      for (int &v:G[cur]) {
-          if (v == head && depth >= 3 && depth <= 7) {
-              vector<unsigned int> tmp;
-              for (int &x:path)
-                  tmp.push_back(ids[x]);
-              if (checkAns(tmp, depth))
-                  ans.emplace_back(Path(depth, tmp));
-          }
-          if (depth < 7 && !vis[v] && v > head) {
-              dfs(head, v, depth + 1, path);
-          }
+  void dfs(int head, int cur, int depth, int (&path)[7]) {
+    vis[cur] = true;
+    path[depth-1] = cur;
+    for (int &v:G[cur]) {
+      if (v == head && depth >= 3 && depth <= 7) {
+        vector<unsigned int> tmp;
+        for (int i = 0; i < depth; i++) {
+          tmp.push_back(ids[path[i]]);
+        }
+        if (checkAns(tmp, depth)) {
+          ret_[depth-3].emplace_back(tmp);
+        }
       }
-      vis[cur] = false;
-      path.pop_back();
+      if (depth < 7 && !vis[v] && v > head) {
+        dfs(head, v, depth+1, path);
+      }
+    }
+    vis[cur] = false;
   }
 
-  //search from 0...n
-  //由于要求id最小的在前，因此搜索的全过程中不考虑比起点id更小的节点
   void solve() {
-      vis = vector<bool>(ids_num_, false);
-      vector<int> path;
-      for (int i = 0; i < ids_num_; i++) {
-          if (!G[i].empty()) {
-              dfs(i, i, 1, path);
-          }
+    ret_.resize(5);
+    vis = vector<bool>(ids_num_, false);
+    int path[7];
+    for (int i = 0; i < ids_num_; i++) {
+      if (!G[i].empty()) {
+        dfs(i, i, 1, path);
       }
-      sort(ans.begin(), ans.end());
+    }
   }
 
   void save(string &outputFile) {
-      ofstream out(outputFile);
-      out << ans.size() << endl;
-      for (auto &x:ans) {
-          auto path = x.path;
-          int sz = path.size();
-          out << path[0];
-          for (int i = 1; i < sz; i++)
-              out << "," << path[i];
-          out << endl;
+    std::ofstream out(outputFile);
+    out << ret_[0].size()+ret_[1].size()+ret_[2].size()+ret_[3].size()+ret_[4].size() << endl;
+    for (int i = 0; i < ret_.size(); i++) {
+      for (auto& path : ret_[i]) {
+        out << path[0];
+        for (int j = 1; j < path.size(); j++) {
+          out << "," << path[j];
+        }
+        out << std::endl;
       }
+    }
   }
 
 private:
@@ -191,14 +179,14 @@ private:
   unsigned int* input_ids_ = new unsigned int[4000000]; int input_ids_size_ = 0;
   vector<int> inDegrees;
   vector<bool> vis;
-  vector<Path> ans;
   int ids_num_;
 
-  std::vector<std::string> ret3_;
-  std::vector<std::string> ret4_;
-  std::vector<std::string> ret5_;
-  std::vector<std::string> ret6_;
-  std::vector<std::string> ret7_;
+  std::vector<std::vector<std::vector<unsigned int>>> ret_;
+  // std::vector<std::string> ret3_;
+  // std::vector<std::string> ret4_;
+  // std::vector<std::string> ret5_;
+  // std::vector<std::string> ret6_;
+  // std::vector<std::string> ret7_;
 };
 
 

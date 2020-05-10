@@ -9,29 +9,14 @@
 
 #include <queue>
 #include <iostream>
-#include <fstream>
 #include <algorithm>
 #include <unordered_map>
 
 
-using namespace std;
-
-
-class Solution {
+class DirectedGraph {
 public:
-  ~Solution() {
-    delete[](ids);
-    delete[](input_ids_);
-    delete[](ids_comma_); delete[](ids_line_); delete[](sl_);
-  }
-
-  inline bool check(int x, int y) {
-      if(x==0 || y==0) return false;
-      return x <= 5ll * y && y <= 3ll * x;
-  }
-
-  void parseInput(std::string& test_filename) {
-    int fd = open(test_filename.c_str(), O_RDONLY);
+  DirectedGraph(const char* filename) {
+    int fd = open(filename, O_RDONLY);
     if (fd == -1) {
       printf("file open error\n");
       exit(1);
@@ -45,7 +30,7 @@ public:
       exit(-1);
     }
     int filesize = st.st_size;
-  
+    
     int8_t* p;
     int8_t* start; int8_t* current;
     int8_t  buf[16];
@@ -56,12 +41,16 @@ public:
       close(fd);
       exit(-1);
     }
-  
+    
     start = p; current = p; 
     int s;
+    unsigned int* inputs = new unsigned int[4000000]; int inputs_size = 0;
+    unsigned int* inputs_money = new unsigned int[2000000]; int inputs_money_size = 0;
     int split = 0;
     int8x16_t tmp;
+    unsigned int max_id;
     unsigned int val1, val2;
+
     for (int i = 0; i < filesize; i++, current++) {
       if (*current == '\n' || *current == ',') {
         s = current - start;
@@ -71,20 +60,22 @@ public:
 
         switch(++split%3) {
           case 1: {
-            val1 = strtoul((char*)buf, NULL, 10);
-            start = current+1;
+	          val1 = strtoul((char*)buf, NULL, 10);
+	          start = current+1;
             break;
           }
           case 2: {
-            val2 = strtoul((char*)buf, NULL, 10);
-            start = current+1;
-            input_ids_[input_ids_size_++] = val1;
-            input_ids_[input_ids_size_++] = val2;
+	          val2 = strtoul((char*)buf, NULL, 10);
+	          start = current+1;
+            inputs[inputs_size++] = val1;
+            inputs[inputs_size++] = val2;
+            max_id = val1 > max_id ? val1 : max_id;
+            max_id = val2 > max_id ? val2 : max_id;
             break;
           }
           case 0: {
-            migic[(unsigned long long) val1 << 32 | val2] = strtoul((char*)buf, NULL, 10);
-            start = current+1;
+            inputs_money[inputs_money_size++] = strtoul((char*)buf, NULL, 10);
+	          start = current+1;
             break;
           }
         }
@@ -93,14 +84,13 @@ public:
 
     munmap((void*)p, filesize);
     close(fd);
-  }
 
-  void constructGraph() {
-    ids = new unsigned int[input_ids_size_];
-    memcpy(ids, input_ids_, sizeof(unsigned int)*input_ids_size_);
-    std::sort(ids, ids+input_ids_size_);
-    ids_num_ = std::unique(ids, ids+input_ids_size_) - ids;
+    unsigned int* ids = new unsigned int[inputs_size];
+    memcpy(ids, inputs, sizeof(unsigned int)*inputs_size);
+    std::sort(ids, ids+inputs_size);
+    ids_num_ = std::unique(ids, ids+inputs_size) - ids;
 
+    std::unordered_map<unsigned int, int> m;
     ids_comma_ = new int8_t[ids_num_*16];
     ids_line_  = new int8_t[ids_num_*16];
     sl_= new int[ids_num_];
@@ -108,74 +98,168 @@ public:
     unsigned int id, t;
     for (int i = 0; i < ids_num_; i++) {
       id = ids[i];
-      idHash[id] = i;
+      m[id] = i;
       t = sprintf((char*)ids_comma_+i*16, "%u,",  id);
       sprintf((char*)ids_line_+i*16, "%u\n", id);
       sl_[i] = t;
     }
 
-    G = vector<vector<int>>(ids_num_);
-    inDegrees = vector<int>(ids_num_, 0);
+    delete[](ids);
 
-    int u, v;
-    for (int i = 0; i < input_ids_size_; i += 2) {
-      u = idHash[input_ids_[i]]; v = idHash[input_ids_[i+1]];
-      G[u].push_back(v);
-      ++inDegrees[v];
+    G_     = std::vector<std::vector<int>>(ids_num_); 
+    inv_G_ = std::vector<std::vector<int>>(ids_num_); 
+
+    int send_idx, recv_idx;
+    unsigned int money;
+    for (int i = 0, j = 0; i < inputs_size; i+=2, j++) {
+      send_idx = m[inputs[i]]; recv_idx = m[inputs[i+1]]; money = inputs_money[j];
+      G_[send_idx].emplace_back(recv_idx);
+      inv_G_[recv_idx].emplace_back(send_idx);
+      money_hash_[(unsigned long long)send_idx << 32 | recv_idx] = money;
     }
-    for (auto& g : G) {
-      std::sort(g.begin(), g.end());
-    }
+
+    delete[](inputs); delete[](inputs_money);
+
+    for (int i = 0; i < ids_num_; i++)
+      std::sort(G_[i].begin(), G_[i].end());
   }
 
-  //magic code,don't touch
-  bool checkAns(int (&path)[7], int depth) {
-    for (int i = 0; i < depth; i++) {
-      int l = ids[path[(i+depth-1)%depth]], m = ids[path[i]], r = ids[path[(i+1)%depth]];
-      if (!check(migic[(unsigned long long)ids[path[(i+depth-1)%depth]] << 32 | ids[path[i]]], 
-                 migic[(unsigned long long) ids[path[i]] << 32 | ids[path[(i+1)%depth]]])) return false;
-    }
+  ~DirectedGraph() {
+    delete[](ret3_); delete[](ret4_); delete[](ret5_); delete[](ret6_); delete[](ret7_);
+    delete[](status_map_);
+    delete[](ids_comma_); delete[](ids_line_); delete[](sl_);
+  }
+
+  inline bool IsGoodProportion(int idx1, int idx2, int idx3) {
+    if (money_hash_[(unsigned long long)idx1 << 32 | idx2] >= money_hash_[(unsigned long long)idx2 << 32 | idx3] / 3.0 && 
+        money_hash_[(unsigned long long)idx2 << 32 | idx3] >= 0.2 * money_hash_[(unsigned long long)idx1 << 32 | idx2])
     return true;
+    else return false;
   }
 
-  void dfs(int head, int cur, int depth, int (&path)[7]) {
-    vis[cur] = true;
-    path[depth-1] = cur;
-    for (int &v:G[cur]) {
-      if (v == head && depth >= 3 && depth <= 7 && checkAns(path, depth)) {
-        for (int i = 0; i < depth-1; i++) {
-          tmpret = vld1q_s8(ids_comma_+path[i]*16); 
-          vst1q_s8(tmps[depth-3], tmpret); 
-          s = sl_[path[i]]; 
-          ret_num_[depth-3] += s; 
-          tmps[depth-3] += s;
+  void FindAllCycles() {
+    status_map_ = new short[ids_num_]();
+
+    int idx1, idx2, idx3, idx4, idx5, idx6, idx7;
+
+    std::vector<int> effective_idxes;
+    effective_idxes.reserve(100000);
+
+    int8_t* s3 = ret_[0];
+    int8_t* s4 = ret_[1];
+    int8_t* s5 = ret_[2];
+    int8_t* s6 = ret_[3];
+    int8_t* s7 = ret_[4];
+    int s;
+
+    int8x16_t tmp;
+
+    for (idx1 = 0; idx1 < ids_num_; idx1++) {
+      if (G_[idx1].empty()) continue;
+
+      for (auto& idx2 : inv_G_[idx1]) {
+        if (idx2 < idx1) continue;
+        status_map_[idx2] = 3;
+	      effective_idxes.emplace_back(idx2);
+
+        for (auto& idx3 : inv_G_[idx2]) {
+          if (idx3 <= idx1) continue;
+          status_map_[idx3] = status_map_[idx3] < 2 ? 2 : status_map_[idx3];
+          effective_idxes.emplace_back(idx3);
+
+          for (auto& idx4 : inv_G_[idx3]) {
+            if (idx4 <= idx1) continue;
+            status_map_[idx4] = status_map_[idx4] == 0 ? 1 : status_map_[idx4];
+            effective_idxes.emplace_back(idx4);
+          }
         }
-        tmpret = vld1q_s8(ids_line_+path[depth-1]*16); 
-        vst1q_s8(tmps[depth-3], tmpret); 
-        s = sl_[path[depth-1]]; 
-        ret_num_[depth-3] += s; 
-        tmps[depth-3] += s;
-        path_num_++;
       }
-      if (depth < 7 && !vis[v] && v > head) {
-        dfs(head, v, depth+1, path);
+
+      for (auto& idx2 : G_[idx1]) {
+        if (idx2 < idx1 || G_[idx2].empty()) continue;
+
+        status_map_[idx2] = status_map_[idx2] == 0 ? -4 : (-1)*status_map_[idx2];
+        for (auto& idx3 : G_[idx2]) {
+          if (idx3 <= idx1) continue;
+          if (!IsGoodProportion(idx1,idx2,idx3)) continue;
+
+	        if (status_map_[idx3] == 3 && IsGoodProportion(idx2,idx3,idx1) && IsGoodProportion(idx3,idx1,idx2)) {
+            tmp = vld1q_s8(ids_comma_+idx1*16); vst1q_s8(s3, tmp); s = sl_[idx1]; ret_num_[0] += s; s3 += s;
+            tmp = vld1q_s8(ids_comma_+idx2*16); vst1q_s8(s3, tmp); s = sl_[idx2]; ret_num_[0] += s; s3 += s;
+            tmp = vld1q_s8(ids_line_+idx3*16);  vst1q_s8(s3, tmp); s = sl_[idx3]; ret_num_[0] += s; s3 += s;
+	          path_num_++;
+	        }
+          
+          status_map_[idx3] = status_map_[idx3] == 0 ? -4 : (-1)*status_map_[idx3];
+          for (auto& idx4 : G_[idx3]) {
+            if (idx4 > idx1 && status_map_[idx4] >= 0 && IsGoodProportion(idx2,idx3,idx4)) {
+	            if (status_map_[idx4] == 3 && IsGoodProportion(idx3,idx4,idx1) && IsGoodProportion(idx4,idx1,idx2)) {
+                tmp = vld1q_s8(ids_comma_+idx1*16); vst1q_s8(s4, tmp); s = sl_[idx1]; ret_num_[1] += s; s4 += s;
+                tmp = vld1q_s8(ids_comma_+idx2*16); vst1q_s8(s4, tmp); s = sl_[idx2]; ret_num_[1] += s; s4 += s;
+                tmp = vld1q_s8(ids_comma_+idx3*16); vst1q_s8(s4, tmp); s = sl_[idx3]; ret_num_[1] += s; s4 += s;
+                tmp = vld1q_s8(ids_line_+idx4*16);  vst1q_s8(s4, tmp); s = sl_[idx4]; ret_num_[1] += s; s4 += s;
+	              path_num_++;
+	            }
+
+              status_map_[idx4] = status_map_[idx4] == 0 ? -4 : (-1)*status_map_[idx4];
+              for (auto& idx5 : G_[idx4]) {
+                if (status_map_[idx5] > 0 && IsGoodProportion(idx3,idx4,idx5)) {
+	                if (status_map_[idx5] == 3 && IsGoodProportion(idx4,idx5,idx1) && IsGoodProportion(idx5,idx1,idx2)) {
+                    tmp = vld1q_s8(ids_comma_+idx1*16); vst1q_s8(s5, tmp); s = sl_[idx1]; ret_num_[2] += s; s5 += s;
+                    tmp = vld1q_s8(ids_comma_+idx2*16); vst1q_s8(s5, tmp); s = sl_[idx2]; ret_num_[2] += s; s5 += s;
+                    tmp = vld1q_s8(ids_comma_+idx3*16); vst1q_s8(s5, tmp); s = sl_[idx3]; ret_num_[2] += s; s5 += s;
+                    tmp = vld1q_s8(ids_comma_+idx4*16); vst1q_s8(s5, tmp); s = sl_[idx4]; ret_num_[2] += s; s5 += s;
+                    tmp = vld1q_s8(ids_line_+idx5*16);  vst1q_s8(s5, tmp); s = sl_[idx5]; ret_num_[2] += s; s5 += s;
+	                  path_num_++;
+	                }
+
+                  status_map_[idx5] *= -1;
+                  for (auto& idx6 : G_[idx5]) {
+		                if (status_map_[idx6] > 1 && IsGoodProportion(idx4,idx5,idx6)) {
+	                    if (status_map_[idx6] == 3 && IsGoodProportion(idx5,idx6,idx1) && IsGoodProportion(idx6,idx1,idx2)) {
+                        tmp = vld1q_s8(ids_comma_+idx1*16); vst1q_s8(s6, tmp); s = sl_[idx1]; ret_num_[3] += s; s6 += s;
+                        tmp = vld1q_s8(ids_comma_+idx2*16); vst1q_s8(s6, tmp); s = sl_[idx2]; ret_num_[3] += s; s6 += s;
+                        tmp = vld1q_s8(ids_comma_+idx3*16); vst1q_s8(s6, tmp); s = sl_[idx3]; ret_num_[3] += s; s6 += s;
+                        tmp = vld1q_s8(ids_comma_+idx4*16); vst1q_s8(s6, tmp); s = sl_[idx4]; ret_num_[3] += s; s6 += s;
+                        tmp = vld1q_s8(ids_comma_+idx5*16); vst1q_s8(s6, tmp); s = sl_[idx5]; ret_num_[3] += s; s6 += s;
+                        tmp = vld1q_s8(ids_line_+idx6*16);  vst1q_s8(s6, tmp); s = sl_[idx6]; ret_num_[3] += s; s6 += s;
+	                      path_num_++;
+	                    }
+
+                      for (auto& idx7 : G_[idx6]) {
+			                  if (status_map_[idx7] == 3 && IsGoodProportion(idx5,idx6,idx7) && IsGoodProportion(idx6,idx7,idx1) && IsGoodProportion(idx7,idx1,idx2)) {
+                          tmp = vld1q_s8(ids_comma_+idx1*16); vst1q_s8(s7, tmp); s = sl_[idx1]; ret_num_[4] += s; s7 += s;
+                          tmp = vld1q_s8(ids_comma_+idx2*16); vst1q_s8(s7, tmp); s = sl_[idx2]; ret_num_[4] += s; s7 += s;
+                          tmp = vld1q_s8(ids_comma_+idx3*16); vst1q_s8(s7, tmp); s = sl_[idx3]; ret_num_[4] += s; s7 += s;
+                          tmp = vld1q_s8(ids_comma_+idx4*16); vst1q_s8(s7, tmp); s = sl_[idx4]; ret_num_[4] += s; s7 += s;
+                          tmp = vld1q_s8(ids_comma_+idx5*16); vst1q_s8(s7, tmp); s = sl_[idx5]; ret_num_[4] += s; s7 += s;
+                          tmp = vld1q_s8(ids_comma_+idx6*16); vst1q_s8(s7, tmp); s = sl_[idx6]; ret_num_[4] += s; s7 += s;
+                          tmp = vld1q_s8(ids_line_+idx7*16);  vst1q_s8(s7, tmp); s = sl_[idx7]; ret_num_[4] += s; s7 += s;
+	                        path_num_++;
+			                  }
+		                  }    
+		                }
+                  }
+                  status_map_[idx5] *= -1;
+                }
+              }
+              status_map_[idx4] = status_map_[idx4] == -4 ? 0 : (-1)*status_map_[idx4];
+            }
+          }
+          status_map_[idx3] = status_map_[idx3] == -4 ? 0 : (-1)*status_map_[idx3];
+        }
+        status_map_[idx2] = status_map_[idx2] == -4 ? 0 : (-1)*status_map_[idx2];
       }
+
+      for (int& effective_idx : effective_idxes) {
+        status_map_[effective_idx] = 0;
+      }
+      effective_idxes.clear();
     }
-    vis[cur] = false;
   }
 
-  void solve() {
-    vis = vector<bool>(ids_num_, false);
-    int path[7];
-    for (int i = 0; i < ids_num_; i++) {
-      if (!G[i].empty()) {
-        dfs(i, i, 1, path);
-      }
-    }
-  }
-
-  void save(string &output_filename) {
-    FILE *fp = fopen(output_filename.c_str(), "wb");
+  void WriteFile(const char* filename) {
+    FILE *fp = fopen(filename, "wb");
     if (fp == NULL) {
       printf("file open error\n");
       exit(1);
@@ -192,18 +276,16 @@ public:
   }
 
 private:
-  vector<vector<int>> G;
-  unordered_map<unsigned int, int> idHash; //sorted id to 0...n
-  //bad case, don't follow
-  unordered_map<unsigned long long, int> migic;
-  unsigned int* ids;
-  unsigned int* input_ids_ = new unsigned int[4000000]; int input_ids_size_ = 0;
-  vector<int> inDegrees;
-  vector<bool> vis;
-  int ids_num_;
   int8_t* ids_comma_;
   int8_t* ids_line_;
   int* sl_;
+
+  int ids_num_ = 0;
+
+  std::vector<std::vector<int>> G_;
+  std::vector<std::vector<int>> inv_G_;
+  short* status_map_;
+  std::unordered_map<unsigned long long, unsigned int> money_hash_;
 
   int8_t* ret3_ = new int8_t[33*20000000]; 
   int8_t* ret4_ = new int8_t[44*20000000]; 
@@ -212,38 +294,20 @@ private:
   int8_t* ret7_ = new int8_t[77*20000000];
   int8_t* ret_[5] = {ret3_, ret4_, ret5_, ret6_, ret7_};
   int ret_num_[5] = {0, 0, 0, 0, 0}; 
-  int path_num_ = 0;
-
-  int8x16_t tmpret;
-  int8_t* s3 = ret3_;
-  int8_t* s4 = ret4_;
-  int8_t* s5 = ret5_;
-  int8_t* s6 = ret6_;
-  int8_t* s7 = ret7_;
-  int8_t* tmps[5] = {s3, s4, s5, s6, s7};
-  int s;
+  int path_num_ = 0; 
 };
 
 
-void Solve(std::string& test_filename, std::string& output_filename) {
-  Solution solution;
-  solution.parseInput(test_filename);
-  solution.constructGraph();
-  solution.solve();
-  solution.save(output_filename);
-}
+int main(int argc, char** argv) {
+  // DirectedGraph directed_graph("../data/test_data.txt");
+  // DirectedGraph directed_graph("/root/dataset/28W/test_data28W.txt");
+  // DirectedGraph directed_graph("/root/dataset/200W/test_data_N111314_E200W_A19630345.txt");
+  DirectedGraph directed_graph("/data/test_data.txt");
 
+  directed_graph.FindAllCycles();
 
-int main() {
-  // std::string test_filename = "../data/test_data.txt";
-  // std::string test_filename = "/root/dataset/28W/test_data28W.txt";
-  // std::string test_filename = "/root/dataset/200W/test_data_N111314_E200W_A19630345.txt";
-  std::string test_filename = "/data/test_data.txt";
-
-  // std::string output_filename = "result.txt";
-  std::string output_filename = "/projects/student/result.txt";
-
-  Solve(test_filename, output_filename);
+  // directed_graph.WriteFile("result.txt");
+  directed_graph.WriteFile("/projects/student/result.txt");
 
   return 0;
 }

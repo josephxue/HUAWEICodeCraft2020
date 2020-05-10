@@ -128,10 +128,9 @@ public:
   }
 
   inline bool IsGoodProportion(int idx1, int idx2, int idx3) {
-    if (money_hash_[(unsigned long long)idx1 << 32 | idx2] >= money_hash_[(unsigned long long)idx2 << 32 | idx3] / 3.0 && 
-        money_hash_[(unsigned long long)idx2 << 32 | idx3] >= 0.2 * money_hash_[(unsigned long long)idx1 << 32 | idx2])
-    return true;
-    else return false;
+    x = money_hash_[(unsigned long long)idx1 << 32 | idx2];
+    y = money_hash_[(unsigned long long)idx2 << 32 | idx3];
+    return x <= 5ll * y && y <= 3ll * x;
   }
 
   void FindAllCycles() {
@@ -292,6 +291,8 @@ private:
   int8_t* ret_[5] = {ret3_, ret4_, ret5_, ret6_, ret7_};
   int ret_num_[5] = {0, 0, 0, 0, 0}; 
   int path_num_ = 0; 
+
+  unsigned int x, y;
 };
 
 

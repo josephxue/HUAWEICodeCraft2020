@@ -48,7 +48,6 @@ public:
     unsigned int* inputs_money = new unsigned int[2000000]; int inputs_money_size = 0;
     int split = 0;
     int8x16_t tmp;
-    unsigned int max_id;
     unsigned int val1, val2;
 
     for (int i = 0; i < filesize; i++, current++) {
@@ -69,8 +68,6 @@ public:
 	          start = current+1;
             inputs[inputs_size++] = val1;
             inputs[inputs_size++] = val2;
-            max_id = val1 > max_id ? val1 : max_id;
-            max_id = val2 > max_id ? val2 : max_id;
             break;
           }
           case 0: {

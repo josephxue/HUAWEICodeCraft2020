@@ -11,8 +11,8 @@
 #include <algorithm>
 
 
-#define DG  30
-#define DiG 30
+#define DG  30 // max outdegree
+#define DiG 30 // max indegree
 
 
 class DirectedGraph {
@@ -25,14 +25,15 @@ public:
     }
 
     struct stat st;
-    int r = fstat(fd, &st);
-    if (r == -1) {
+    int fst = fstat(fd, &st);
+    if (fst == -1) {
       printf("get file stat error\n");
       close(fd);
       exit(-1);
     }
     int filesize = st.st_size;
-    
+
+    // mmap read file 
     int8_t* p;
     int8_t* start; int8_t* current;
     int8_t  buf[16];
@@ -56,6 +57,7 @@ public:
       if (*current == '\n' || *current == ',') {
         switch(++split%3) {
           case 1: {
+            // transfer in id
             s = current - start;
 	          tmp = vld1q_s8(start);
 	          vst1q_s8(buf, tmp);
@@ -65,21 +67,21 @@ public:
             break;
           }
           case 2: {
+            // transfer out id
             s = current - start;
 	          tmp = vld1q_s8(start);
 	          vst1q_s8(buf, tmp);
 	          buf[s] = '\0';
 	          val2 = atoi((char*)buf);
 	          start = current+1;
-            if (val1 <= 50000 && val2 <= 50000) {
-              inputs[inputs_size++] = val1;
-              inputs[inputs_size++] = val2;
-	            max_id = val1 > max_id ? val1 : max_id;
-	            max_id = val2 > max_id ? val2 : max_id;
-            }
+            inputs[inputs_size++] = val1;
+            inputs[inputs_size++] = val2;
+            max_id = val1 > max_id ? val1 : max_id;
+            max_id = val2 > max_id ? val2 : max_id;
             break;
           }
           default: {
+            // in preliminary, money is not needed
 	          start = current+1;
             break;
           }
@@ -89,7 +91,8 @@ public:
 
     munmap((void*)p, filesize);
     close(fd);
-    
+
+    // counting sort to establish map from id to idx
     int* m = new int[max_id+1]; 
     int* c = new int[max_id+1]();
     int* ids = new int[max_id+1];
@@ -104,6 +107,7 @@ public:
 
     delete[](c);
 
+    // precomputed table to increase write file speed
     ids_comma_ = new int8_t[ids_num_*16];
     ids_line_  = new int8_t[ids_num_*16];
     sl_= new int[ids_num_];
@@ -118,6 +122,7 @@ public:
 
     delete[](ids);
 
+    // construct adjacency table
     G_     = new int[ids_num_*DG];
     inv_G_ = new int[ids_num_*DiG];
     in_degrees_  = new int[ids_num_]();
@@ -166,6 +171,7 @@ public:
       }
     }
 
+    // bubble sort
     bool is_sorted = false;
     int tmpsort;
     for (int i = 0; i < ids_num_; i++) {
@@ -216,6 +222,7 @@ public:
       if (out_degrees_[idx1] == 0) continue;
       if (G_[idx1*DG+out_degrees_[idx1]-1] < idx1) continue;
 
+      // inverse search
       for (int i = 0; i < in_degrees_[idx1]; i++) {
         idx2 = inv_G_[idx1*DiG+i];
         if (idx2 < idx1) continue;
@@ -237,6 +244,7 @@ public:
         }
       }
 
+      // forward search
       for (int i = 0; i < out_degrees_[idx1]; i++) {
         idx2 = G_[idx1*DG+i];
         if (idx2 < idx1 || out_degrees_[idx2] == 0) continue;
@@ -248,6 +256,7 @@ public:
           if (idx3 <= idx1) continue;
 
 	        if (status_map_[idx3] == 3) {
+            // string copy through arm neon
             tmp = vld1q_s8(ids_comma_+idx1*16); vst1q_s8(s3, tmp); s = sl_[idx1]; ret_num_[0] += s; s3 += s;
             tmp = vld1q_s8(ids_comma_+idx2*16); vst1q_s8(s3, tmp); s = sl_[idx2]; ret_num_[0] += s; s3 += s;
             tmp = vld1q_s8(ids_line_+idx3*16);  vst1q_s8(s3, tmp); s = sl_[idx3]; ret_num_[0] += s; s3 += s;
@@ -260,6 +269,7 @@ public:
 
             if (idx4 > idx1 && status_map_[idx4] >= 0) {
 	            if (status_map_[idx4] == 3) {
+                // string copy through arm neon
                 tmp = vld1q_s8(ids_comma_+idx1*16); vst1q_s8(s4, tmp); s = sl_[idx1]; ret_num_[1] += s; s4 += s;
                 tmp = vld1q_s8(ids_comma_+idx2*16); vst1q_s8(s4, tmp); s = sl_[idx2]; ret_num_[1] += s; s4 += s;
                 tmp = vld1q_s8(ids_comma_+idx3*16); vst1q_s8(s4, tmp); s = sl_[idx3]; ret_num_[1] += s; s4 += s;
@@ -273,6 +283,7 @@ public:
 
                 if (status_map_[idx5] > 0) {
 	                if (status_map_[idx5] == 3) {
+                    // string copy through arm neon
                     tmp = vld1q_s8(ids_comma_+idx1*16); vst1q_s8(s5, tmp); s = sl_[idx1]; ret_num_[2] += s; s5 += s;
                     tmp = vld1q_s8(ids_comma_+idx2*16); vst1q_s8(s5, tmp); s = sl_[idx2]; ret_num_[2] += s; s5 += s;
                     tmp = vld1q_s8(ids_comma_+idx3*16); vst1q_s8(s5, tmp); s = sl_[idx3]; ret_num_[2] += s; s5 += s;
@@ -287,6 +298,7 @@ public:
 
 		                if (status_map_[idx6] > 1) {
 	                    if (status_map_[idx6] == 3) {
+                        // string copy through arm neon
                         tmp = vld1q_s8(ids_comma_+idx1*16); vst1q_s8(s6, tmp); s = sl_[idx1]; ret_num_[3] += s; s6 += s;
                         tmp = vld1q_s8(ids_comma_+idx2*16); vst1q_s8(s6, tmp); s = sl_[idx2]; ret_num_[3] += s; s6 += s;
                         tmp = vld1q_s8(ids_comma_+idx3*16); vst1q_s8(s6, tmp); s = sl_[idx3]; ret_num_[3] += s; s6 += s;
@@ -300,6 +312,7 @@ public:
                         idx7 = G_[idx6*DG+n];
 
 			                  if (status_map_[idx7] == 3) {
+                          // string copy through arm neon
                           tmp = vld1q_s8(ids_comma_+idx1*16); vst1q_s8(s7, tmp); s = sl_[idx1]; ret_num_[4] += s; s7 += s;
                           tmp = vld1q_s8(ids_comma_+idx2*16); vst1q_s8(s7, tmp); s = sl_[idx2]; ret_num_[4] += s; s7 += s;
                           tmp = vld1q_s8(ids_comma_+idx3*16); vst1q_s8(s7, tmp); s = sl_[idx3]; ret_num_[4] += s; s7 += s;
@@ -359,11 +372,11 @@ private:
   short* status_map_;
   int* in_degrees_;
   int* out_degrees_;
-  int8_t* ret3_ = new int8_t[33*500000+10]; 
-  int8_t* ret4_ = new int8_t[44*500000+10]; 
-  int8_t* ret5_ = new int8_t[55*1000000+10];
-  int8_t* ret6_ = new int8_t[66*2000000+10];
-  int8_t* ret7_ = new int8_t[77*3000000+10];
+  int8_t* ret3_ = new int8_t[33*500000]; 
+  int8_t* ret4_ = new int8_t[44*500000]; 
+  int8_t* ret5_ = new int8_t[55*1000000];
+  int8_t* ret6_ = new int8_t[66*2000000];
+  int8_t* ret7_ = new int8_t[77*3000000];
   int8_t* ret_[5] = {ret3_, ret4_, ret5_, ret6_, ret7_};
   int ret_num_[5] = {0, 0, 0, 0, 0}; 
   int path_num_ = 0; 
@@ -371,13 +384,13 @@ private:
 
 
 int main(int argc, char** argv) {
-  // DirectedGraph directed_graph("../data/test_data.txt");
-  // DirectedGraph directed_graph("/root/2020HuaweiCodecraft-TestData/1004812/test_data.txt");
+  // construct solver
   DirectedGraph directed_graph("/data/test_data.txt");
 
+  // compute results
   directed_graph.FindAllCycles();
 
-  // directed_graph.WriteFile("go.txt");
+  // file output
   directed_graph.WriteFile("/projects/student/result.txt");
 
   return 0;

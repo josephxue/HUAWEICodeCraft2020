@@ -59,21 +59,21 @@ public:
           case 1: {
             // transfer in id
             s = current - start;
-	          tmp = vld1q_s8(start);
-	          vst1q_s8(buf, tmp);
-	          buf[s] = '\0';
-	          val1 = atoi((char*)buf);
-	          start = current+1;
+            tmp = vld1q_s8(start);
+            vst1q_s8(buf, tmp);
+            buf[s] = '\0';
+            val1 = atoi((char*)buf);
+            start = current+1;
             break;
           }
           case 2: {
             // transfer out id
             s = current - start;
-	          tmp = vld1q_s8(start);
-	          vst1q_s8(buf, tmp);
-	          buf[s] = '\0';
-	          val2 = atoi((char*)buf);
-	          start = current+1;
+            tmp = vld1q_s8(start);
+            vst1q_s8(buf, tmp);
+            buf[s] = '\0';
+            val2 = atoi((char*)buf);
+            start = current+1;
             inputs[inputs_size++] = val1;
             inputs[inputs_size++] = val2;
             max_id = val1 > max_id ? val1 : max_id;
@@ -82,7 +82,7 @@ public:
           }
           default: {
             // in preliminary, money is not needed
-	          start = current+1;
+            start = current+1;
             break;
           }
         }
@@ -150,9 +150,9 @@ public:
       q.pop();
       for (int i = 0; i < out_degrees_[u]; i++) {
         v = G_[u*DG+i];
-	      for (int j = 0; j < in_degrees_[v]; j++) {
-	        if (inv_G_[v*DiG+j] == u) inv_G_[v*DiG+j] = inv_G_[v*DiG+in_degrees_[v]-1];
-	      }
+        for (int j = 0; j < in_degrees_[v]; j++) {
+          if (inv_G_[v*DiG+j] == u) inv_G_[v*DiG+j] = inv_G_[v*DiG+in_degrees_[v]-1];
+        }
         if (0 == --in_degrees_[v]) q.push(v);
       }
     }
@@ -164,9 +164,9 @@ public:
       q.pop();
       for (int i = 0; i < in_degrees_[u]; i++) {
         v = inv_G_[u*DiG+i];
-	      for (int j = 0; j < out_degrees_[v]; j++) {
-	        if (G_[v*DG+j] == u) G_[v*DG+j] = G_[v*DG+out_degrees_[v]-1];
-	      }
+        for (int j = 0; j < out_degrees_[v]; j++) {
+          if (G_[v*DG+j] == u) G_[v*DG+j] = G_[v*DG+out_degrees_[v]-1];
+        }
         if (0 == --out_degrees_[v]) q.push(v);
       }
     }
@@ -227,7 +227,7 @@ public:
         idx2 = inv_G_[idx1*DiG+i];
         if (idx2 < idx1) continue;
         status_map_[idx2] = 3;
-	      effective_idxes[effective_idxes_size++] = idx2;
+        effective_idxes[effective_idxes_size++] = idx2;
 
         for (int j = 0; j < in_degrees_[idx2]; j++) {
           idx3 = inv_G_[idx2*DiG+j];
@@ -255,49 +255,49 @@ public:
           idx3 = G_[idx2*DG+j];
           if (idx3 <= idx1) continue;
 
-	        if (status_map_[idx3] == 3) {
+          if (status_map_[idx3] == 3) {
             // string copy through arm neon
             tmp = vld1q_s8(ids_comma_+idx1*16); vst1q_s8(s3, tmp); s = sl_[idx1]; ret_num_[0] += s; s3 += s;
             tmp = vld1q_s8(ids_comma_+idx2*16); vst1q_s8(s3, tmp); s = sl_[idx2]; ret_num_[0] += s; s3 += s;
             tmp = vld1q_s8(ids_line_+idx3*16);  vst1q_s8(s3, tmp); s = sl_[idx3]; ret_num_[0] += s; s3 += s;
-	          path_num_++;
-	        }
+            path_num_++;
+          }
 
           status_map_[idx3] = status_map_[idx3] == 0 ? -4 : (-1)*status_map_[idx3];
           for (int k = 0; k < out_degrees_[idx3]; k++) {
             idx4 = G_[idx3*DG+k];
 
             if (idx4 > idx1 && status_map_[idx4] >= 0) {
-	            if (status_map_[idx4] == 3) {
+              if (status_map_[idx4] == 3) {
                 // string copy through arm neon
                 tmp = vld1q_s8(ids_comma_+idx1*16); vst1q_s8(s4, tmp); s = sl_[idx1]; ret_num_[1] += s; s4 += s;
                 tmp = vld1q_s8(ids_comma_+idx2*16); vst1q_s8(s4, tmp); s = sl_[idx2]; ret_num_[1] += s; s4 += s;
                 tmp = vld1q_s8(ids_comma_+idx3*16); vst1q_s8(s4, tmp); s = sl_[idx3]; ret_num_[1] += s; s4 += s;
                 tmp = vld1q_s8(ids_line_+idx4*16);  vst1q_s8(s4, tmp); s = sl_[idx4]; ret_num_[1] += s; s4 += s;
-	              path_num_++;
-	            }
+                path_num_++;
+              }
 
               status_map_[idx4] = status_map_[idx4] == 0 ? -4 : (-1)*status_map_[idx4];
               for (int l = 0; l < out_degrees_[idx4]; l++) {
                 idx5 = G_[idx4*DG+l];
 
                 if (status_map_[idx5] > 0) {
-	                if (status_map_[idx5] == 3) {
+                  if (status_map_[idx5] == 3) {
                     // string copy through arm neon
                     tmp = vld1q_s8(ids_comma_+idx1*16); vst1q_s8(s5, tmp); s = sl_[idx1]; ret_num_[2] += s; s5 += s;
                     tmp = vld1q_s8(ids_comma_+idx2*16); vst1q_s8(s5, tmp); s = sl_[idx2]; ret_num_[2] += s; s5 += s;
                     tmp = vld1q_s8(ids_comma_+idx3*16); vst1q_s8(s5, tmp); s = sl_[idx3]; ret_num_[2] += s; s5 += s;
                     tmp = vld1q_s8(ids_comma_+idx4*16); vst1q_s8(s5, tmp); s = sl_[idx4]; ret_num_[2] += s; s5 += s;
                     tmp = vld1q_s8(ids_line_+idx5*16);  vst1q_s8(s5, tmp); s = sl_[idx5]; ret_num_[2] += s; s5 += s;
-	                  path_num_++;
-	                }
+                    path_num_++;
+                  }
 
                   status_map_[idx5] *= -1;
                   for (int m = 0; m < out_degrees_[idx5]; m++) {
                     idx6 = G_[idx5*DG+m];
 
-		                if (status_map_[idx6] > 1) {
-	                    if (status_map_[idx6] == 3) {
+                    if (status_map_[idx6] > 1) {
+                      if (status_map_[idx6] == 3) {
                         // string copy through arm neon
                         tmp = vld1q_s8(ids_comma_+idx1*16); vst1q_s8(s6, tmp); s = sl_[idx1]; ret_num_[3] += s; s6 += s;
                         tmp = vld1q_s8(ids_comma_+idx2*16); vst1q_s8(s6, tmp); s = sl_[idx2]; ret_num_[3] += s; s6 += s;
@@ -305,13 +305,13 @@ public:
                         tmp = vld1q_s8(ids_comma_+idx4*16); vst1q_s8(s6, tmp); s = sl_[idx4]; ret_num_[3] += s; s6 += s;
                         tmp = vld1q_s8(ids_comma_+idx5*16); vst1q_s8(s6, tmp); s = sl_[idx5]; ret_num_[3] += s; s6 += s;
                         tmp = vld1q_s8(ids_line_+idx6*16);  vst1q_s8(s6, tmp); s = sl_[idx6]; ret_num_[3] += s; s6 += s;
-	                      path_num_++;
-	                    }
+                        path_num_++;
+                      }
 
                       for (int n = 0; n < out_degrees_[idx6]; n++) {
                         idx7 = G_[idx6*DG+n];
 
-			                  if (status_map_[idx7] == 3) {
+                        if (status_map_[idx7] == 3) {
                           // string copy through arm neon
                           tmp = vld1q_s8(ids_comma_+idx1*16); vst1q_s8(s7, tmp); s = sl_[idx1]; ret_num_[4] += s; s7 += s;
                           tmp = vld1q_s8(ids_comma_+idx2*16); vst1q_s8(s7, tmp); s = sl_[idx2]; ret_num_[4] += s; s7 += s;
@@ -320,10 +320,10 @@ public:
                           tmp = vld1q_s8(ids_comma_+idx5*16); vst1q_s8(s7, tmp); s = sl_[idx5]; ret_num_[4] += s; s7 += s;
                           tmp = vld1q_s8(ids_comma_+idx6*16); vst1q_s8(s7, tmp); s = sl_[idx6]; ret_num_[4] += s; s7 += s;
                           tmp = vld1q_s8(ids_line_+idx7*16);  vst1q_s8(s7, tmp); s = sl_[idx7]; ret_num_[4] += s; s7 += s;
-	                        path_num_++;
-			                  }
-		                  }    
-		                }
+                          path_num_++;
+                        }
+                      }    
+                    }
                   }
                   status_map_[idx5] *= -1;
                 }
